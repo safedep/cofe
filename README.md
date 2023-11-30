@@ -6,3 +6,12 @@ Supported Ecosystems
 * Pypi / Python
 
 
+# Get Started
+
+##
+
+```
+go run main.go scan -D <source_code>
+
+```
+
