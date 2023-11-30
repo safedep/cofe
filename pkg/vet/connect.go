@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v54/github"
+	"github.com/safedep/dry/log"
 	"github.com/safedep/dry/utils"
 	"github.com/safedep/vet/pkg/common/logger"
 	"golang.org/x/oauth2"
@@ -17,7 +18,7 @@ import (
 func GetGithubClient() (*github.Client, error) {
 	github_token := os.Getenv("GITHUB_TOKEN")
 	if !utils.IsEmptyString(github_token) {
-		logger.Debugf("Found GITHUB_TOKEN env variable, using it to access Github.")
+		log.Debugf("Found GITHUB_TOKEN env variable, using it to access Github.")
 		return nil, fmt.Errorf("GITHUB_TOKEN is not set")
 	}
 

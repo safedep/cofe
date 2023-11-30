@@ -4,8 +4,10 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/safedep/deps_weaver/pkg/pm/pypi"
 	"github.com/safedep/deps_weaver/pkg/vet"
 	"github.com/safedep/dry/log"
 	"github.com/spf13/cobra"
@@ -53,8 +55,6 @@ func newScanCommand() *cobra.Command {
 		"Analyze transitive dependencies till depth")
 	cmd.Flags().IntVarP(&vi.Concurrency, "concurrency", "C", 5,
 		"Number of concurrent analysis to run")
-	cmd.Flags().StringVarP(&vi.DumpJsonManifestDir, "json-dump-dir", "", "",
-		"Dump enriched package manifests as JSON files to dir")
 	cmd.Flags().StringVarP(&vi.CelFilterExpression, "filter", "", "",
 		"Filter and print packages using CEL")
 	cmd.Flags().StringVarP(&vi.CelFilterSuiteFile, "filter-suite", "", "",
@@ -63,24 +63,51 @@ func newScanCommand() *cobra.Command {
 		"Fail the scan if the filter match any package (security gate)")
 	cmd.Flags().BoolVarP(&vi.DisableAuthVerifyBeforeScan, "no-verify-auth", "", false,
 		"Do not verify auth token before starting scan")
-	cmd.Flags().StringVarP(&vi.MarkdownReportPath, "report-markdown", "", "",
-		"Generate consolidated markdown report to file")
-	cmd.Flags().BoolVarP(&vi.ConsoleReport, "report-console", "", false,
-		"Print a report to the console")
-	cmd.Flags().BoolVarP(&vi.SummaryReport, "report-summary", "", true,
-		"Print a summary report with actionable advice")
-	cmd.Flags().IntVarP(&vi.SummaryReportMaxAdvice, "report-summary-max-advice", "", 5,
-		"Maximum number of package risk advice to show")
-	cmd.Flags().StringVarP(&vi.CsvReportPath, "report-csv", "", "",
-		"Generate CSV report of filtered packages")
 	cmd.Flags().StringVarP(&vi.JsonReportPath, "report-json", "", "",
 		"Generate consolidated JSON report to file (EXPERIMENTAL schema)")
-	cmd.Flags().BoolVarP(&vi.SyncReport, "report-sync", "", false,
-		"Enable syncing report data to cloud")
-	cmd.Flags().StringVarP(&vi.SyncReportProject, "report-sync-project", "", "",
-		"Project name to use in cloud")
-	cmd.Flags().StringVarP(&vi.SyncReportStream, "report-sync-stream", "", "",
-		"Project stream name (e.g. branch) to use in cloud")
+
+	return &cmd
+}
+
+func newDownloadPypiPkgCommand() *cobra.Command {
+
+	var baseDir string
+	var pkg string
+	var version string
+
+	cmd := cobra.Command{
+		Use:   "pypi",
+		Short: "Download and extract pypi package",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pm := pypi.NewPypiPackageManager()
+			_, baseDir, err := pm.DownloadAndGetPackageInfo(baseDir, pkg, version)
+			if err != nil {
+				panic(err)
+			}
+			// defer os.RemoveAll(baseDir)
+			fmt.Printf("Extracted Package to %s", baseDir)
+			pkgDetails, err := pypi.ParsePythonWheelDist(baseDir)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(pkgDetails)
+			return nil
+		},
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	cmd.Flags().StringVarP(&baseDir, "dir", "D", wd,
+		"Directory to extract")
+	cmd.MarkFlagRequired("dir")
+	cmd.Flags().StringVarP(&pkg, "pkg", "P", "",
+		"Pkg Name ")
+	cmd.MarkFlagRequired("pkg")
+	cmd.Flags().StringVarP(&version, "version", "V", "",
+		"Version")
 
 	return &cmd
 }
@@ -88,4 +115,5 @@ func newScanCommand() *cobra.Command {
 func init() {
 	log.InitZapLogger("Zap")
 	rootCmd.AddCommand(newScanCommand())
+	rootCmd.AddCommand(newDownloadPypiPkgCommand())
 }
