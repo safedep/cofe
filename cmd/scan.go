@@ -43,6 +43,10 @@ func newScanCommand() *cobra.Command {
 		"Silent scan to prevent rendering UI")
 	cmd.Flags().StringVarP(&vi.BaseDirectory, "directory", "D", wd,
 		"The directory to scan for lockfiles")
+
+	cmd.Flags().IntVarP(&vi.TransitiveDepth, "max-depth", "", 2,
+		"Depth to analyze transitive dependencies")
+
 	cmd.Flags().StringArrayVarP(&vi.ScanExclude, "exclude", "", []string{},
 		"Name patterns to ignore while scanning a directory")
 	cmd.Flags().StringArrayVarP(&vi.Lockfiles, "lockfiles", "L", []string{},
@@ -57,6 +61,7 @@ func newScanCommand() *cobra.Command {
 		"Maximum number of repositories to process for the Github Org")
 	cmd.Flags().StringVarP(&vi.LockfileAs, "lockfile-as", "", "",
 		"Parser to use for the lockfile (vet scan parsers to list)")
+
 	cmd.Flags().BoolVarP(&vi.TransitiveAnalysis, "transitive", "", false,
 		"Analyze transitive dependencies")
 	cmd.Flags().IntVarP(&vi.TransitiveDepth, "transitive-depth", "", 2,

@@ -7,7 +7,6 @@ import (
 	"path"
 
 	G "github.com/dominikbraun/graph"
-	"github.com/dominikbraun/graph/draw"
 	"github.com/google/osv-scanner/pkg/lockfile"
 	"github.com/safedep/deps_weaver/pkg/core/models"
 	"github.com/safedep/deps_weaver/pkg/pm/pypi"
@@ -15,89 +14,89 @@ import (
 	"github.com/safedep/dry/log"
 )
 
-type NodeTypeEnum string
+type nodeTypeEnum string
 
-type HashFunc (*func(c IDepNode) string)
-type IDepNodeGraph G.Graph[string, IDepNode]
+type HashFunc (*func(c iDepNode) string)
+type iDepNodeGraph G.Graph[string, iDepNode]
 
 const (
-	PackageNodeType = NodeTypeEnum("PackageNode")
+	PackageNodeType = nodeTypeEnum("PackageNode")
 )
 
 // Graph Nodes
-type IDepNode interface {
+type iDepNode interface {
 	Key() string
-	GetNodeType() NodeTypeEnum
+	GetNodeType() nodeTypeEnum
 	GetDepth() int
 }
 
 // Graph Pkg Node
-type PkgNode struct {
+type pkgGraphNode struct {
 	pkg   *models.Package
 	depth int
 }
 
-func IDepNodeHashFunc(n IDepNode) string {
+func iDepNodeHashFunc(n iDepNode) string {
 	return n.Key()
 }
 
 // Get the unique key of the node, used for loopups
-func (d *PkgNode) Key() string {
+func (d *pkgGraphNode) Key() string {
 	// return fmt.Sprintf("%s:%s:%s", d.pkg.PackageDetails.Name, d.pkg.PackageDetails.Version, d.pkg.PackageDetails.Ecosystem)
 	return fmt.Sprintf("%s", d.pkg.PackageDetails.Name)
 
 }
 
 // Get Node type of the node
-func (d *PkgNode) GetNodeType() NodeTypeEnum {
+func (d *pkgGraphNode) GetNodeType() nodeTypeEnum {
 	return PackageNodeType
 }
 
 // Get Node type of the node
-func (d *PkgNode) GetDepth() int {
+func (d *pkgGraphNode) GetDepth() int {
 	return d.depth
 }
 
 type DepsCrawler struct {
-	vetScanner  *vet.VetScanner
-	rootPkgNode *PkgNode
-	maxDepth    int
+	vetScanner       *vet.VetScanner
+	rootpkgGraphNode *pkgGraphNode
+	maxDepth         int
 }
 
 type recursiveCrawler struct {
-	graph        IDepNodeGraph
-	visitedNodes map[string]IDepNode
-	queue        []IDepNode
+	graph        iDepNodeGraph
+	visitedNodes map[string]iDepNode
+	queue        []iDepNode
 	index        int
 	pkgManager   *pypi.PypiPackageManager
 	maxDepth     int
 }
 
-func (d *DepsCrawler) NewRecursiveCrawler(graph IDepNodeGraph) *recursiveCrawler {
+func (d *DepsCrawler) NewRecursiveCrawler(graph iDepNodeGraph) *recursiveCrawler {
 	pm := pypi.NewPypiPackageManager()
 
 	return &recursiveCrawler{
 		graph:        graph,
-		visitedNodes: make(map[string]IDepNode, 0),
+		visitedNodes: make(map[string]iDepNode, 0),
 		pkgManager:   pm,
 		maxDepth:     d.maxDepth,
 	}
 }
 
-func (r *recursiveCrawler) isVisited(n IDepNode) bool {
+func (r *recursiveCrawler) isVisited(n iDepNode) bool {
 	_, ok := r.visitedNodes[n.Key()]
 	return ok
 }
 
-func (r *recursiveCrawler) markVisited(n IDepNode) {
+func (r *recursiveCrawler) markVisited(n iDepNode) {
 	r.visitedNodes[n.Key()] = n
 }
 
-func (r *recursiveCrawler) addNode2Queue(n IDepNode) {
+func (r *recursiveCrawler) addNode2Queue(n iDepNode) {
 	r.queue = append(r.queue, n)
 }
 
-func (r *recursiveCrawler) nextVertexFromQueue() IDepNode {
+func (r *recursiveCrawler) nextVertexFromQueue() iDepNode {
 	for r.index < len(r.queue) {
 		vertex := r.queue[r.index]
 		r.index += 1
@@ -114,30 +113,30 @@ func NewDepsCrawler(vi *vet.VetInput, maxDepth int) *DepsCrawler {
 	vetScanner := vet.NewVetScanner(vi)
 	rootNode := createRootPackage(vi)
 	crawler := DepsCrawler{vetScanner: vetScanner,
-		rootPkgNode: rootNode,
-		maxDepth:    maxDepth}
+		rootpkgGraphNode: rootNode,
+		maxDepth:         maxDepth}
 	return &crawler
 }
 
-func createRootPackage(vi *vet.VetInput) *PkgNode {
+func createRootPackage(vi *vet.VetInput) *pkgGraphNode {
 	mani := models.Manifest{Path: vi.BaseDirectory,
 		DisplayPath: vi.BaseDirectory,
 		Ecosystem:   string(lockfile.PipEcosystem)}
 	_, name := path.Split(vi.BaseDirectory)
 	pd := models.PackageDetails{Name: name}
-	return &PkgNode{pkg: &models.Package{PackageDetails: pd, Manifest: &mani}, depth: 0}
+	return &pkgGraphNode{pkg: &models.Package{PackageDetails: pd, Manifest: &mani}, depth: 0}
 }
 
 func (c *DepsCrawler) Crawl() error {
-	var graph IDepNodeGraph
-	graph = G.New[string](IDepNodeHashFunc, G.Directed())
+	var graph iDepNodeGraph
+	graph = G.New[string](iDepNodeHashFunc, G.Directed())
 	recCrawler := c.NewRecursiveCrawler(graph)
-	err := graph.AddVertex(c.rootPkgNode)
+	err := graph.AddVertex(c.rootpkgGraphNode)
 	if errors.Is(err, G.ErrVertexAlreadyExists) {
 		log.Debugf("Error Root Node Already Exists...")
 		return err
 	}
-	recCrawler.addNode2Queue(c.rootPkgNode)
+	recCrawler.addNode2Queue(c.rootpkgGraphNode)
 
 	// Scan the base Project to find dependencies
 	vetReport, err := c.vetScanner.StartScan()
@@ -148,35 +147,35 @@ func (c *DepsCrawler) Crawl() error {
 
 	pkgs := vetReport.GetPackages()
 	for _, pkg := range pkgs.GetPackages() {
-		n := &PkgNode{pkg: pkg, depth: c.rootPkgNode.GetDepth() + 1}
+		n := &pkgGraphNode{pkg: pkg, depth: c.rootpkgGraphNode.GetDepth() + 1}
 		err := graph.AddVertex(n)
 		if err != nil {
 			log.Debugf("Error while adding vertex %s", err)
 		} else {
 			recCrawler.addNode2Queue(n)
 		}
-		graph.AddEdge(c.rootPkgNode.Key(), n.Key())
+		graph.AddEdge(c.rootpkgGraphNode.Key(), n.Key())
 	}
 
 	//Do the recursive crawling based on the seed nodes
 	recCrawler.crawl()
 
-	_ = G.DFS(graph, c.rootPkgNode.Key(), func(value string) bool {
-		fmt.Println(value)
-		return false
-	})
+	// _ = G.DFS(graph, c.rootpkgGraphNode.Key(), func(value string) bool {
+	// 	fmt.Println(value)
+	// 	return false
+	// })
 
-	file, _ := os.Create("./mygraph.gv")
-	_ = draw.DOT(graph, file)
+	// file, _ := os.Create("./mygraph.gv")
+	// _ = draw.DOT(graph, file)
 
-	transitiveReduction, err := G.TransitiveReduction(graph)
-	if err != nil {
-		log.Debugf("Error in creating transitive graph %s", err)
-	} else {
+	// transitiveReduction, err := G.TransitiveReduction(graph)
+	// if err != nil {
+	// 	log.Debugf("Error in creating transitive graph %s", err)
+	// } else {
 
-		file, _ := os.Create("./tans_mygraph.gv")
-		_ = draw.DOT(transitiveReduction, file)
-	}
+	// 	file, _ := os.Create("./tans_mygraph.gv")
+	// 	_ = draw.DOT(transitiveReduction, file)
+	// }
 
 	return nil
 }
@@ -212,10 +211,10 @@ func (r *recursiveCrawler) crawl() error {
 	return nil
 }
 
-func (r *recursiveCrawler) processNode(node IDepNode) ([]IDepNode, error) {
-	var depNodes []IDepNode
+func (r *recursiveCrawler) processNode(node iDepNode) ([]iDepNode, error) {
+	var depNodes []iDepNode
 	var err error
-	pkg, ok := node.(*PkgNode)
+	pkg, ok := node.(*pkgGraphNode)
 	if ok {
 		depNodes, err = r.downloadAndProcessPkg(pkg)
 		if err != nil {
@@ -229,8 +228,8 @@ func (r *recursiveCrawler) processNode(node IDepNode) ([]IDepNode, error) {
 	return depNodes, nil
 }
 
-func (r *recursiveCrawler) downloadAndProcessPkg(parentNode *PkgNode) ([]IDepNode, error) {
-	var depNodes []IDepNode
+func (r *recursiveCrawler) downloadAndProcessPkg(parentNode *pkgGraphNode) ([]iDepNode, error) {
+	var depNodes []iDepNode
 	baseDir, err := os.MkdirTemp("", "deps-weaver")
 	pd := parentNode.pkg.PackageDetails
 	if err != nil {
@@ -257,7 +256,7 @@ func (r *recursiveCrawler) downloadAndProcessPkg(parentNode *PkgNode) ([]IDepNod
 
 	for _, depPd := range pkgDetails {
 		pkg := models.Package{PackageDetails: models.PackageDetails(depPd), Manifest: &mani}
-		depNodes = append(depNodes, &PkgNode{pkg: &pkg, depth: parentNode.GetDepth() + 1})
+		depNodes = append(depNodes, &pkgGraphNode{pkg: &pkg, depth: parentNode.GetDepth() + 1})
 	}
 	return depNodes, nil
 }
