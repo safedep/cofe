@@ -5,22 +5,37 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/safedep/vet/pkg/models"
+	"github.com/safedep/deps_weaver/pkg/core/models"
+	vet_models "github.com/safedep/vet/pkg/models"
 )
 
 type VetReport struct {
-	baseDir   string
-	manifests []*models.PackageManifest
+	baseDir  string
+	packages models.DepPackages
 }
 
 func NewVetReport(baseDir string) *VetReport {
 	return &VetReport{baseDir: baseDir}
 }
 
-func (v *VetReport) AddManifest(man *models.PackageManifest) {
-	// Currently vet reports absolute path, make it relative
+func (v *VetReport) AddVetManifest(man *vet_models.PackageManifest) {
 	man.Path = v.relativePath(v.baseDir, man.Path)
-	v.manifests = append(v.manifests, man)
+	manifest := models.Manifest{Path: man.Path,
+		DisplayPath: man.DisplayPath,
+		Ecosystem:   man.Ecosystem}
+	for _, p := range man.Packages {
+		pkgDetails := models.PackageDetails{Name: p.Name,
+			Version:   p.Version,
+			Commit:    p.Commit,
+			Ecosystem: p.Ecosystem,
+			CompareAs: p.CompareAs}
+		pkg := models.Package{PackageDetails: pkgDetails, Manifest: &manifest}
+		v.packages.AddPackage(&pkg)
+	}
+}
+
+func (v *VetReport) GetPackages() *models.DepPackages {
+	return &v.packages
 }
 
 func (v *VetReport) relativePath(basePath, fullPath string) string {
@@ -44,10 +59,8 @@ func (v *VetReport) relativePath(basePath, fullPath string) string {
 }
 
 func (v *VetReport) Print() {
-	for _, man := range v.manifests {
-		fmt.Printf("Manifest %s\n", man.Path)
-		for _, p := range man.Packages {
-			fmt.Printf("\t Package %v\n", p)
-		}
+	for _, pkg := range v.packages.GetPackages() {
+		fmt.Printf("Manifest %s Package %s %s\n", pkg.Manifest.Path,
+			pkg.PackageDetails.Name, pkg.PackageDetails.Version)
 	}
 }

@@ -234,7 +234,7 @@ func (v *VetScanner) internalStartScan() (*VetReport, error) {
 		OnDoneManifest: func(manifest *models.PackageManifest) {
 			logger.Debugf("Done Manifest...%v", manifest)
 			// ui.IncrementProgress(packageManifestTracker, 1)
-			vetReport.AddManifest(manifest)
+			vetReport.AddVetManifest(manifest)
 		},
 		OnDonePackage: func(pkg *models.Package) {
 			logger.Debugf("Done Package...%v", pkg)

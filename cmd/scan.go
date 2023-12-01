@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	builder "github.com/safedep/deps_weaver/pkg/graph/deps"
 	"github.com/safedep/deps_weaver/pkg/pm/pypi"
 	"github.com/safedep/deps_weaver/pkg/vet"
 	"github.com/safedep/dry/log"
@@ -20,8 +21,15 @@ func newScanCommand() *cobra.Command {
 		Use:   "scan",
 		Short: "Scan and analyse package manifests",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			vetScanner := vet.NewVetScanner(&vi)
-			vetScanner.StartScan()
+			crawler := builder.NewDepsCrawler(&vi)
+			crawler.Crawl()
+			// vetScanner := vet.NewVetScanner(&vi)
+			// vr, err := vetScanner.StartScan()
+			// if err != nil {
+			// 	log.Debugf("Error while running vet %s", err)
+			// 	return err
+			// }
+			// vr.Print()
 			return nil
 		},
 	}
