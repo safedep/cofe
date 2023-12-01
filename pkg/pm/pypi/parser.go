@@ -26,8 +26,9 @@ var pyWheelVersionMatchers []*regexp.Regexp = []*regexp.Regexp{
 }
 
 // https://packaging.python.org/en/latest/specifications/binary-distribution-format/
-func ParsePythonWheelDist(rootDir string) ([]lockfile.PackageDetails, error) {
+func ParsePythonWheelDist(rootDir string) (string, []lockfile.PackageDetails, error) {
 	details := []lockfile.PackageDetails{}
+	manifestPath := ""
 
 	err := filepath.Walk(rootDir, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -48,15 +49,16 @@ func ParsePythonWheelDist(rootDir string) ([]lockfile.PackageDetails, error) {
 				}
 
 				details = pkgDetails
+				manifestPath = filePath
 			}
 		}
 		return nil
 	})
 
 	if err != nil {
-		return details, err
+		return manifestPath, details, err
 	}
-	return details, nil
+	return manifestPath, details, nil
 }
 
 // https://packaging.python.org/en/latest/specifications/core-metadata/

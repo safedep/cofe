@@ -21,7 +21,7 @@ func newScanCommand() *cobra.Command {
 		Use:   "scan",
 		Short: "Scan and analyse package manifests",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			crawler := builder.NewDepsCrawler(&vi)
+			crawler := builder.NewDepsCrawler(&vi, 2)
 			crawler.Crawl()
 			// vetScanner := vet.NewVetScanner(&vi)
 			// vr, err := vetScanner.StartScan()
@@ -94,7 +94,7 @@ func newDownloadPypiPkgCommand() *cobra.Command {
 			}
 			// defer os.RemoveAll(baseDir)
 			fmt.Printf("Extracted Package to %s", baseDir)
-			pkgDetails, err := pypi.ParsePythonWheelDist(baseDir)
+			_, pkgDetails, err := pypi.ParsePythonWheelDist(baseDir)
 			if err != nil {
 				panic(err)
 			}
