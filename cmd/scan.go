@@ -21,15 +21,13 @@ func newScanCommand() *cobra.Command {
 		Use:   "scan",
 		Short: "Scan and analyse package manifests",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			crawler := builder.NewDepsCrawler(&vi, 2)
-			crawler.Crawl()
-			// vetScanner := vet.NewVetScanner(&vi)
-			// vr, err := vetScanner.StartScan()
-			// if err != nil {
-			// 	log.Debugf("Error while running vet %s", err)
-			// 	return err
-			// }
-			// vr.Print()
+			crawler := builder.NewDepsCrawler(&vi)
+			gres, err := crawler.Crawl()
+			if err != nil {
+				log.Debugf("Error while running vet %s", err)
+				return err
+			}
+			gres.Print()
 			return nil
 		},
 	}
@@ -47,37 +45,37 @@ func newScanCommand() *cobra.Command {
 	cmd.Flags().IntVarP(&vi.TransitiveDepth, "max-depth", "", 2,
 		"Depth to analyze transitive dependencies")
 
-	cmd.Flags().StringArrayVarP(&vi.ScanExclude, "exclude", "", []string{},
-		"Name patterns to ignore while scanning a directory")
-	cmd.Flags().StringArrayVarP(&vi.Lockfiles, "lockfiles", "L", []string{},
-		"List of lockfiles to scan")
-	cmd.Flags().StringVarP(&vi.PurlSpec, "purl", "", "",
-		"PURL to scan")
-	cmd.Flags().StringArrayVarP(&vi.GithubRepoUrls, "github", "", []string{},
-		"Github repository URL (Example: https://github.com/{org}/{repo})")
-	cmd.Flags().StringVarP(&vi.GithubOrgUrl, "github-org", "", "",
-		"Github organization URL (Example: https://github.com/safedep)")
-	cmd.Flags().IntVarP(&vi.GithubOrgMaxRepositories, "github-org-max-repo", "", 1000,
-		"Maximum number of repositories to process for the Github Org")
-	cmd.Flags().StringVarP(&vi.LockfileAs, "lockfile-as", "", "",
-		"Parser to use for the lockfile (vet scan parsers to list)")
+	// cmd.Flags().StringArrayVarP(&vi.ScanExclude, "exclude", "", []string{},
+	// 	"Name patterns to ignore while scanning a directory")
+	// cmd.Flags().StringArrayVarP(&vi.Lockfiles, "lockfiles", "L", []string{},
+	// 	"List of lockfiles to scan")
+	// cmd.Flags().StringVarP(&vi.PurlSpec, "purl", "", "",
+	// 	"PURL to scan")
+	// cmd.Flags().StringArrayVarP(&vi.GithubRepoUrls, "github", "", []string{},
+	// 	"Github repository URL (Example: https://github.com/{org}/{repo})")
+	// cmd.Flags().StringVarP(&vi.GithubOrgUrl, "github-org", "", "",
+	// 	"Github organization URL (Example: https://github.com/safedep)")
+	// cmd.Flags().IntVarP(&vi.GithubOrgMaxRepositories, "github-org-max-repo", "", 1000,
+	// 	"Maximum number of repositories to process for the Github Org")
+	// cmd.Flags().StringVarP(&vi.LockfileAs, "lockfile-as", "", "",
+	// 	"Parser to use for the lockfile (vet scan parsers to list)")
 
-	cmd.Flags().BoolVarP(&vi.TransitiveAnalysis, "transitive", "", false,
-		"Analyze transitive dependencies")
-	cmd.Flags().IntVarP(&vi.TransitiveDepth, "transitive-depth", "", 2,
-		"Analyze transitive dependencies till depth")
-	cmd.Flags().IntVarP(&vi.Concurrency, "concurrency", "C", 5,
-		"Number of concurrent analysis to run")
-	cmd.Flags().StringVarP(&vi.CelFilterExpression, "filter", "", "",
-		"Filter and print packages using CEL")
-	cmd.Flags().StringVarP(&vi.CelFilterSuiteFile, "filter-suite", "", "",
-		"Filter packages using CEL Filter Suite from file")
-	cmd.Flags().BoolVarP(&vi.CelFilterFailOnMatch, "filter-fail", "", false,
-		"Fail the scan if the filter match any package (security gate)")
-	cmd.Flags().BoolVarP(&vi.DisableAuthVerifyBeforeScan, "no-verify-auth", "", false,
-		"Do not verify auth token before starting scan")
-	cmd.Flags().StringVarP(&vi.JsonReportPath, "report-json", "", "",
-		"Generate consolidated JSON report to file (EXPERIMENTAL schema)")
+	// cmd.Flags().BoolVarP(&vi.TransitiveAnalysis, "transitive", "", false,
+	// 	"Analyze transitive dependencies")
+	// cmd.Flags().IntVarP(&vi.TransitiveDepth, "transitive-depth", "", 2,
+	// 	"Analyze transitive dependencies till depth")
+	// cmd.Flags().IntVarP(&vi.Concurrency, "concurrency", "C", 5,
+	// 	"Number of concurrent analysis to run")
+	// cmd.Flags().StringVarP(&vi.CelFilterExpression, "filter", "", "",
+	// 	"Filter and print packages using CEL")
+	// cmd.Flags().StringVarP(&vi.CelFilterSuiteFile, "filter-suite", "", "",
+	// 	"Filter packages using CEL Filter Suite from file")
+	// cmd.Flags().BoolVarP(&vi.CelFilterFailOnMatch, "filter-fail", "", false,
+	// 	"Fail the scan if the filter match any package (security gate)")
+	// cmd.Flags().BoolVarP(&vi.DisableAuthVerifyBeforeScan, "no-verify-auth", "", false,
+	// 	"Do not verify auth token before starting scan")
+	// cmd.Flags().StringVarP(&vi.JsonReportPath, "report-json", "", "",
+	// 	"Generate consolidated JSON report to file (EXPERIMENTAL schema)")
 
 	return &cmd
 }

@@ -27,15 +27,39 @@ type Package struct {
 }
 
 func (p *Package) AddImportedModules(modules []string) {
+	if p.importedModules == nil {
+		p.importedModules = make(map[string]bool)
+	}
 	for _, m := range modules {
 		p.importedModules[m] = true
 	}
 }
 
 func (p *Package) AddExportedModules(modules []string) {
+	if p.exportedModules == nil {
+		p.exportedModules = make(map[string]bool)
+	}
 	for _, m := range modules {
 		p.exportedModules[m] = true
 	}
+}
+
+func (p *Package) GetImportedModules() []string {
+	var mods []string
+	for mod, _ := range p.importedModules {
+		mods = append(mods, mod)
+	}
+
+	return mods
+}
+
+func (p *Package) GetExportedModules() []string {
+	var mods []string
+	for mod, _ := range p.exportedModules {
+		mods = append(mods, mod)
+	}
+
+	return mods
 }
 
 type DepPackages struct {
