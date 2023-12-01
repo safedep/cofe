@@ -3,10 +3,10 @@ module github.com/safedep/deps_weaver
 go 1.21.2
 
 require (
+	github.com/dominikbraun/graph v0.23.0
 	github.com/gofri/go-github-ratelimit v1.0.5
 	github.com/google/go-github/v54 v54.0.0
 	github.com/google/osv-scanner v1.4.3
-	github.com/hmdsefi/gograph v0.4.0
 	github.com/safedep/dry v0.0.0-20231029184244-7af43c4ecd7c
 	github.com/safedep/vet v1.4.1-0.20231130053558-084e8341fb62
 	github.com/spf13/cobra v1.8.0

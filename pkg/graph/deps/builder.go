@@ -1,12 +1,14 @@
 package builder
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
 
+	G "github.com/dominikbraun/graph"
+	"github.com/dominikbraun/graph/draw"
 	"github.com/google/osv-scanner/pkg/lockfile"
-	"github.com/hmdsefi/gograph"
 	"github.com/safedep/deps_weaver/pkg/core/models"
 	"github.com/safedep/deps_weaver/pkg/pm/pypi"
 	"github.com/safedep/deps_weaver/pkg/vet"
@@ -14,6 +16,9 @@ import (
 )
 
 type NodeTypeEnum string
+
+type HashFunc (*func(c IDepNode) string)
+type IDepNodeGraph G.Graph[string, IDepNode]
 
 const (
 	PackageNodeType = NodeTypeEnum("PackageNode")
@@ -32,9 +37,15 @@ type PkgNode struct {
 	depth int
 }
 
+func IDepNodeHashFunc(n IDepNode) string {
+	return n.Key()
+}
+
 // Get the unique key of the node, used for loopups
 func (d *PkgNode) Key() string {
-	return fmt.Sprintf("%s:%s:%s", d.pkg.PackageDetails.Name, d.pkg.PackageDetails.Version, d.pkg.PackageDetails.Ecosystem)
+	// return fmt.Sprintf("%s:%s:%s", d.pkg.PackageDetails.Name, d.pkg.PackageDetails.Version, d.pkg.PackageDetails.Ecosystem)
+	return fmt.Sprintf("%s", d.pkg.PackageDetails.Name)
+
 }
 
 // Get Node type of the node
@@ -54,20 +65,20 @@ type DepsCrawler struct {
 }
 
 type recursiveCrawler struct {
-	graph        gograph.Graph[IDepNode]
-	visitedNodes map[string]*gograph.Vertex[IDepNode]
-	queue        []*gograph.Vertex[IDepNode]
+	graph        IDepNodeGraph
+	visitedNodes map[string]IDepNode
+	queue        []IDepNode
 	index        int
 	pkgManager   *pypi.PypiPackageManager
 	maxDepth     int
 }
 
-func (d *DepsCrawler) NewRecursiveCrawler(graph gograph.Graph[IDepNode]) *recursiveCrawler {
+func (d *DepsCrawler) NewRecursiveCrawler(graph IDepNodeGraph) *recursiveCrawler {
 	pm := pypi.NewPypiPackageManager()
 
 	return &recursiveCrawler{
 		graph:        graph,
-		visitedNodes: make(map[string]*gograph.Vertex[IDepNode], 0),
+		visitedNodes: make(map[string]IDepNode, 0),
 		pkgManager:   pm,
 		maxDepth:     d.maxDepth,
 	}
@@ -78,25 +89,24 @@ func (r *recursiveCrawler) isVisited(n IDepNode) bool {
 	return ok
 }
 
-func (r *recursiveCrawler) markVisited(n *gograph.Vertex[IDepNode]) {
-	r.visitedNodes[n.Label().Key()] = n
+func (r *recursiveCrawler) markVisited(n IDepNode) {
+	r.visitedNodes[n.Key()] = n
 }
 
-func (r *recursiveCrawler) addNode2Queue(n *gograph.Vertex[IDepNode]) {
+func (r *recursiveCrawler) addNode2Queue(n IDepNode) {
 	r.queue = append(r.queue, n)
 }
 
-func (r *recursiveCrawler) nextVertexFromQueue() *gograph.Vertex[IDepNode] {
+func (r *recursiveCrawler) nextVertexFromQueue() IDepNode {
 	for r.index < len(r.queue) {
 		vertex := r.queue[r.index]
-		isVisisted := r.isVisited(vertex.Label())
-		isMaxDepth := vertex.Label().GetDepth() > r.maxDepth
-		if !isVisisted && !isMaxDepth {
+		r.index += 1
+		// isVisisted := r.isVisited(vertex)
+		isMaxDepth := vertex.GetDepth() > r.maxDepth
+		if !isMaxDepth {
 			return vertex
 		}
-		r.index += 1
 	}
-
 	return nil
 }
 
@@ -119,10 +129,15 @@ func createRootPackage(vi *vet.VetInput) *PkgNode {
 }
 
 func (c *DepsCrawler) Crawl() error {
-	graph := gograph.New[IDepNode](gograph.Directed())
+	var graph IDepNodeGraph
+	graph = G.New[string](IDepNodeHashFunc, G.Directed())
 	recCrawler := c.NewRecursiveCrawler(graph)
-	rootVertex := graph.AddVertexByLabel(c.rootPkgNode)
-	recCrawler.addNode2Queue(rootVertex)
+	err := graph.AddVertex(c.rootPkgNode)
+	if errors.Is(err, G.ErrVertexAlreadyExists) {
+		log.Debugf("Error Root Node Already Exists...")
+		return err
+	}
+	recCrawler.addNode2Queue(c.rootPkgNode)
 
 	// Scan the base Project to find dependencies
 	vetReport, err := c.vetScanner.StartScan()
@@ -134,36 +149,64 @@ func (c *DepsCrawler) Crawl() error {
 	pkgs := vetReport.GetPackages()
 	for _, pkg := range pkgs.GetPackages() {
 		n := &PkgNode{pkg: pkg, depth: c.rootPkgNode.GetDepth() + 1}
-		v := graph.AddVertexByLabel(n)
-		graph.AddEdge(rootVertex, v)
-		recCrawler.addNode2Queue(v)
+		err := graph.AddVertex(n)
+		if err != nil {
+			log.Debugf("Error while adding vertex %s", err)
+		} else {
+			recCrawler.addNode2Queue(n)
+		}
+		graph.AddEdge(c.rootPkgNode.Key(), n.Key())
 	}
 
 	//Do the recursive crawling based on the seed nodes
 	recCrawler.crawl()
+
+	_ = G.DFS(graph, c.rootPkgNode.Key(), func(value string) bool {
+		fmt.Println(value)
+		return false
+	})
+
+	file, _ := os.Create("./mygraph.gv")
+	_ = draw.DOT(graph, file)
+
+	transitiveReduction, err := G.TransitiveReduction(graph)
+	if err != nil {
+		log.Debugf("Error in creating transitive graph %s", err)
+	} else {
+
+		file, _ := os.Create("./tans_mygraph.gv")
+		_ = draw.DOT(transitiveReduction, file)
+	}
+
 	return nil
 }
 
 func (r *recursiveCrawler) crawl() error {
 	for {
-		log.Debugf("Queue Length %d, Vertices %d", len(r.graph.GetAllVertices()))
+		size, _ := r.graph.Size()
+		log.Debugf("Queue Length %d, Edges %d", len(r.queue), size)
 		vertex := r.nextVertexFromQueue()
 		if vertex == nil {
 			break
 		}
-		fmt.Printf("Picked up node %s for processing..\n", vertex.Label().Key())
-		r.markVisited(vertex)
-		nodes, err := r.processNode(vertex.Label())
+		fmt.Printf("Picked up node %s for processing..\n", vertex.Key())
+		// r.markVisited(vertex)
+		nodes, err := r.processNode(vertex)
 		if err != nil {
-			log.Debugf("\tError processing node %s..", vertex.Label().Key())
+			log.Debugf("\tError processing node %s..", vertex.Key())
 		}
 		for _, n := range nodes {
 			fmt.Printf("\tAdding node %s to the queue..\n", n.Key())
-			if !r.isVisited(n) {
-				nextVertex := r.graph.AddVertexByLabel(n)
-				r.graph.AddEdge(vertex, nextVertex)
-				r.addNode2Queue(nextVertex)
+			err := r.graph.AddVertex(n)
+			if err != nil {
+				if !errors.Is(err, G.ErrVertexAlreadyExists) {
+					log.Debugf("Error while adding vertex %s", err)
+				}
+			} else {
+				r.addNode2Queue(n)
 			}
+			r.graph.AddEdge(vertex.Key(), n.Key())
+
 		}
 	}
 	return nil

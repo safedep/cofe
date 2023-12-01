@@ -88,21 +88,35 @@ func parsePythonPkgInfo(reader io.Reader) ([]lockfile.PackageDetails, error) {
 	return []lockfile.PackageDetails{}, nil
 }
 
+func extractPrefix(input string, charsToStopAt string) (string, string) {
+	index := strings.IndexAny(input, charsToStopAt)
+	if index == -1 {
+		// If none of the characters in charsToStopAt are found, return the entire input as the prefix.
+		return input, ""
+	}
+
+	prefix := input[:index]
+	rest := input[index:]
+
+	return prefix, rest
+}
+
 // https://peps.python.org/pep-0440/
 // https://peps.python.org/pep-0508/
 // Parsing python dist version spec is not easy. We need to use the spec grammar
 // to do it correctly. Taking shortcut here by only using the name as the first
 // iteration ignoring the version
 func parsePythonPackageSpec(pkgSpec string) (lockfile.PackageDetails, error) {
-	parts := strings.SplitN(pkgSpec, " ", 2)
-	name := parts[0]
+	onlyPkgSpec := strings.SplitN(pkgSpec, ";", 2)
+	part1, part2 := extractPrefix(onlyPkgSpec[0], " ><=!~")
+	name := part1
 	version := "0.0.0"
 
 	rest := ""
-	if len(parts) > 1 {
-		rest = parts[1]
+	if len(part2) > 1 {
+		rest = part2
 	}
-
+	// fmt.Printf("spec %s name %s, rest %s", pkgSpec, name, rest)
 	// Try to match version by regex
 	for _, r := range pyWheelVersionMatchers {
 		res := r.FindAllStringSubmatch(rest, 1)
