@@ -15,12 +15,23 @@ import (
 )
 
 var vi vet.VetInput
+var export2Graphviz string
+var readStdPipConf bool
 
 func newScanCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "scan",
 		Short: "Scan and analyse package manifests",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			iconf := pypi.IndexUrlsConf{ReadStdPipConf: readStdPipConf}
+			indexUrls, err := pypi.GetIndexURLs(iconf)
+			if err != nil {
+				return err
+			}
+			if len(indexUrls) == 0 {
+				return fmt.Errorf("No Index Urls found..")
+			}
+			vi.IndexUrls = indexUrls
 			crawler := builder.NewDepsCrawler(&vi)
 			gres, err := crawler.Crawl()
 			if err != nil {
@@ -28,6 +39,15 @@ func newScanCommand() *cobra.Command {
 				return err
 			}
 			gres.Print()
+			if export2Graphviz != "" {
+				gres.Export2Graphviz(fmt.Sprintf("%s.orig", export2Graphviz), true)
+			}
+			gres.RemoveEdgesBasedOnImportedModules()
+			gres.Print()
+
+			if export2Graphviz != "" {
+				gres.Export2Graphviz(export2Graphviz, true)
+			}
 			return nil
 		},
 	}
@@ -44,38 +64,11 @@ func newScanCommand() *cobra.Command {
 
 	cmd.Flags().IntVarP(&vi.TransitiveDepth, "max-depth", "", 2,
 		"Depth to analyze transitive dependencies")
+	cmd.Flags().StringVarP(&export2Graphviz, "graphviz", "", "",
+		"Export to graphviz")
 
-	// cmd.Flags().StringArrayVarP(&vi.ScanExclude, "exclude", "", []string{},
-	// 	"Name patterns to ignore while scanning a directory")
-	// cmd.Flags().StringArrayVarP(&vi.Lockfiles, "lockfiles", "L", []string{},
-	// 	"List of lockfiles to scan")
-	// cmd.Flags().StringVarP(&vi.PurlSpec, "purl", "", "",
-	// 	"PURL to scan")
-	// cmd.Flags().StringArrayVarP(&vi.GithubRepoUrls, "github", "", []string{},
-	// 	"Github repository URL (Example: https://github.com/{org}/{repo})")
-	// cmd.Flags().StringVarP(&vi.GithubOrgUrl, "github-org", "", "",
-	// 	"Github organization URL (Example: https://github.com/safedep)")
-	// cmd.Flags().IntVarP(&vi.GithubOrgMaxRepositories, "github-org-max-repo", "", 1000,
-	// 	"Maximum number of repositories to process for the Github Org")
-	// cmd.Flags().StringVarP(&vi.LockfileAs, "lockfile-as", "", "",
-	// 	"Parser to use for the lockfile (vet scan parsers to list)")
-
-	// cmd.Flags().BoolVarP(&vi.TransitiveAnalysis, "transitive", "", false,
-	// 	"Analyze transitive dependencies")
-	// cmd.Flags().IntVarP(&vi.TransitiveDepth, "transitive-depth", "", 2,
-	// 	"Analyze transitive dependencies till depth")
-	// cmd.Flags().IntVarP(&vi.Concurrency, "concurrency", "C", 5,
-	// 	"Number of concurrent analysis to run")
-	// cmd.Flags().StringVarP(&vi.CelFilterExpression, "filter", "", "",
-	// 	"Filter and print packages using CEL")
-	// cmd.Flags().StringVarP(&vi.CelFilterSuiteFile, "filter-suite", "", "",
-	// 	"Filter packages using CEL Filter Suite from file")
-	// cmd.Flags().BoolVarP(&vi.CelFilterFailOnMatch, "filter-fail", "", false,
-	// 	"Fail the scan if the filter match any package (security gate)")
-	// cmd.Flags().BoolVarP(&vi.DisableAuthVerifyBeforeScan, "no-verify-auth", "", false,
-	// 	"Do not verify auth token before starting scan")
-	// cmd.Flags().StringVarP(&vi.JsonReportPath, "report-json", "", "",
-	// 	"Generate consolidated JSON report to file (EXPERIMENTAL schema)")
+	cmd.Flags().BoolVarP(&readStdPipConf, "read-std-conf", "", false,
+		"Location of Pip file ")
 
 	return &cmd
 }
@@ -90,7 +83,9 @@ func newDownloadPypiPkgCommand() *cobra.Command {
 		Use:   "pypi",
 		Short: "Download and extract pypi package",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pm := pypi.NewPypiPackageManager()
+			iconf := pypi.IndexUrlsConf{ReadStdPipConf: readStdPipConf}
+			indexUrls, err := pypi.GetIndexURLs(iconf)
+			pm := pypi.NewPypiPackageManager(indexUrls)
 			_, baseDir, err := pm.DownloadAndGetPackageInfo(baseDir, pkg, version)
 			if err != nil {
 				panic(err)
@@ -119,6 +114,9 @@ func newDownloadPypiPkgCommand() *cobra.Command {
 	cmd.MarkFlagRequired("pkg")
 	cmd.Flags().StringVarP(&version, "version", "V", "",
 		"Version")
+
+	cmd.Flags().BoolVarP(&readStdPipConf, "read-std-conf", "", false,
+		"Location of Pip file ")
 
 	return &cmd
 }

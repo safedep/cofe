@@ -4,13 +4,13 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/safedep/deps_weaver/pkg/pm/http_manager"
 	"github.com/safedep/dry/log"
 
 	"archive/tar"
@@ -20,15 +20,20 @@ import (
 )
 
 type PypiPackageManager struct {
-	pypiUrl string
+	// pypiUrl string
+	httpm *http_manager.HTTPClientManager
 }
 
-func NewPrivatePypiPackageManager(pypiUrl string) *PypiPackageManager {
-	return &PypiPackageManager{pypiUrl: pypiUrl}
+func NewPrivatePypiPackageManager(indexUrls []string) *PypiPackageManager {
+	httm := http_manager.NewHTTPClientManager()
+	for _, pypiUrl := range indexUrls {
+		httm.AddURL(pypiUrl)
+	}
+	return &PypiPackageManager{httpm: httm}
 }
 
-func NewPypiPackageManager() *PypiPackageManager {
-	return NewPrivatePypiPackageManager("https://pypi.org/")
+func NewPypiPackageManager(indexUrls []string) *PypiPackageManager {
+	return NewPrivatePypiPackageManager(indexUrls)
 }
 
 func (s *PypiPackageManager) DownloadAndGetPackageInfo(directory, packageName, version string) (map[string]interface{}, string, error) {
@@ -51,11 +56,16 @@ func (s *PypiPackageManager) DownloadPackage(packageName, directory, version str
 
 	releases, ok := data["releases"].(map[string]interface{})
 	if !ok {
-		return "", errors.New("Invalid 'releases' data in package info")
+		return "", fmt.Errorf("Invalid 'releases' data in package info data length %d", len(data))
 	}
 
 	if version == "" || version == "0.0.0" {
-		version = data["info"].(map[string]interface{})["version"].(string)
+		v, ok := data["info"].(map[string]interface{})["version"]
+		if ok {
+			version = v.(string)
+		} else {
+			return "", fmt.Errorf("Error while extracting version %s", packageName)
+		}
 	}
 
 	files, ok := releases[version].([]interface{})
@@ -101,39 +111,61 @@ func (s *PypiPackageManager) DownloadPackage(packageName, directory, version str
 }
 
 func (s *PypiPackageManager) getPackageInfo(name string) (map[string]interface{}, error) {
-	url, err := url.JoinPath(s.pypiUrl, "pypi", name, "json")
-	if err != nil {
-		return nil, err
-	}
-	log.Debugf("Retrieving PyPI package metadata from %s\n", url)
 
-	response, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != 200 {
-		return nil, fmt.Errorf("Received status code: %d from PyPI", response.StatusCode)
-	}
-
+	clients := s.httpm.GetAllBaseURLs()
+	var lastErr error
 	var data map[string]interface{}
-	decoder := json.NewDecoder(response.Body)
-	if err := decoder.Decode(&data); err != nil {
-		return nil, err
+	if len(clients) == 0 {
+		return nil, fmt.Errorf("No http clients found to get package info")
 	}
 
-	if message, ok := data["message"].(string); ok {
-		return nil, fmt.Errorf("Error retrieving package: %s", message)
-	}
+	for _, client := range clients {
 
-	return data, nil
+		url, err := url.JoinPath(client.BaseUrl, name, "json")
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("Retrieving PyPI package metadata from %s\n", url)
+
+		response, err := client.Get(url)
+		if err != nil {
+			log.Debugf("Error while retrieving package %s\n", err)
+			lastErr = err
+			continue
+		}
+		defer response.Body.Close()
+
+		if response.StatusCode != 200 {
+			lastErr = fmt.Errorf("Received status code: %d from PyPI", response.StatusCode)
+			continue
+		}
+
+		decoder := json.NewDecoder(response.Body)
+		if err := decoder.Decode(&data); err != nil {
+			lastErr = err
+			continue
+		}
+
+		if message, ok := data["message"].(string); ok {
+			lastErr = fmt.Errorf("Error retrieving package: %s", message)
+			continue
+		}
+
+		// If everything is good break from the loop
+		break
+
+	}
+	if len(data) == 0 && lastErr != nil {
+		return nil, lastErr
+	} else {
+		return data, nil
+	}
 }
 
 func (s *PypiPackageManager) downloadCompressed(url, archivePath, targetPath string) error {
 	log.Debugf("Downloading package archive from %s into %s\n", url, targetPath)
 
-	response, err := http.Get(url)
+	response, err := s.httpm.Get(url)
 	if err != nil {
 		return err
 	}

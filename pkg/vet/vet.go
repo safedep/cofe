@@ -35,6 +35,7 @@ type VetInput struct {
 	SilentScan                  bool
 	DisableAuthVerifyBeforeScan bool
 	ListExperimentalParsers     bool
+	IndexUrls                   []string
 }
 
 type VetScanner struct {

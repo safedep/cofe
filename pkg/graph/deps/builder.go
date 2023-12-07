@@ -33,23 +33,6 @@ func newGraphResult(rootNode iDepNode, graph iDepNodeGraph) *graphResult {
 
 	gres.addExportedModulesMap()
 	return &gres
-
-	// _ = G.DFS(graph, c.rootpkgGraphNode.Key(), func(value string) bool {
-	// 	fmt.Println(value)
-	// 	return false
-	// })
-
-	// file, _ := os.Create("./mygraph.gv")
-	// _ = draw.DOT(graph, file)
-
-	// transitiveReduction, err := G.TransitiveReduction(graph)
-	// if err != nil {
-	// 	log.Debugf("Error in creating transitive graph %s", err)
-	// } else {
-
-	// 	file, _ := os.Create("./tans_mygraph.gv")
-	// 	_ = draw.DOT(transitiveReduction, file)
-	// }
 }
 
 func (g *graphResult) addExportedModulesMap() {
@@ -68,14 +51,69 @@ func (g *graphResult) addExportedModulesMap() {
 	})
 }
 
-func (g *graphResult) Export2Graphviz(outpath string) error {
+func (g *graphResult) RemoveEdgesBasedOnImportedModules() error {
+	edges, err := g.graph.Edges()
+	if err != nil {
+		log.Debugf("Error while getting edges %s", err)
+		return err
+	}
+	for _, edge := range edges {
+		sv, _ := g.graph.Vertex(edge.Source)
+		tv, _ := g.graph.Vertex(edge.Target)
+		targetNode, _ := tv.(*pkgGraphNode)
+		sourceNode, _ := sv.(*pkgGraphNode)
+		importedModules := sourceNode.pkg.GetImportedModules()
+		expotedModules := targetNode.pkg.GetExportedModules()
+		// Import and export module match?
+		targetPkgName := targetNode.pkg.PackageDetails.Name
+
+		ieMatch := g.stringsIntersect(importedModules, expotedModules)
+		targetInImports := g.targetPkgNameInImportedModules(targetPkgName, importedModules)
+		if !targetInImports && !ieMatch {
+			g.graph.RemoveEdge(sv.Key(), tv.Key())
+			log.Debugf("Removed Edge from %s to %s - reason imported exported modules mismatch", sv.Key(), tv.Key())
+			log.Debugf("Imported Modules at source %s, Exported Modules %s", importedModules, expotedModules)
+
+		}
+	}
+	return nil
+}
+
+func (g *graphResult) targetPkgNameInImportedModules(pkgName string, modules []string) bool {
+	for _, mod := range modules {
+		if strings.Contains(pkgName, mod) {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *graphResult) stringsIntersect(src []string, des []string) bool {
+	for _, s := range src {
+		for _, t := range des {
+			if t == s {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g *graphResult) Export2Graphviz(outpath string, reachable bool) error {
 	file, _ := os.Create(outpath)
 	defer file.Close()
+	if reachable {
+		gg, err := g.ReachableGraph()
+		if err != nil {
+			return err
+		}
+		return draw.DOT(gg, file)
+	}
 	return draw.DOT(g.graph, file)
 }
 
 func (g *graphResult) Print() {
-	_ = G.DFS(g.graph, g.rootNode.Key(), func(value string) bool {
+	_ = G.BFS(g.graph, g.rootNode.Key(), func(value string) bool {
 		node, err := g.graph.Vertex(value)
 		if err != nil {
 			return false
@@ -84,6 +122,62 @@ func (g *graphResult) Print() {
 		fmt.Printf("%s %s\n", g.spaces(node.GetDepth()), node.Key())
 		return false
 	})
+}
+
+func (g *graphResult) ReachableGraph() (iDepNodeGraph, error) {
+
+	fmt.Printf("Reducing Reachable Graph ...")
+	reachableNodes := make(map[string]bool, 0)
+
+	_ = G.BFS(g.graph, g.rootNode.Key(), func(value string) bool {
+		reachableNodes[value] = true
+		return false
+	})
+
+	gg, err := g.graph.Clone()
+	if err != nil {
+		return nil, err
+	}
+
+	vmap, err := gg.AdjacencyMap()
+	if err != nil {
+		log.Debugf("\n Error while getting map %s", err)
+	}
+
+	for v, edges := range vmap {
+		if _, ok1 := reachableNodes[v]; !ok1 {
+			for t, _ := range edges {
+				// Remove both edges to and fro
+				err := gg.RemoveEdge(v, t)
+				if err != nil {
+					log.Debugf("Error while removing edge %s", err)
+				} else {
+					log.Debugf("Removing edge %s %s", v, t)
+				}
+			}
+		}
+	}
+
+	for v, _ := range vmap {
+		if _, ok1 := reachableNodes[v]; !ok1 {
+			err := gg.RemoveVertex(v)
+			if err != nil {
+				log.Debugf("Error while removing vertex %s %s", v, err)
+			} else {
+				log.Debugf("Removed vertex %s", v)
+			}
+
+			// err = gg.RemoveVertex(v)
+			// log.Debugf("Removed vertex again %s", err)
+			// _, err = gg.Vertex(v)
+			// log.Debugf("Fetching after deletion %s", err)
+
+		}
+	}
+
+	_, err = gg.Vertex("tqdm")
+	log.Debugf("tqdm Fetching after deletion %s", err)
+	return gg, nil
 }
 
 func (g *graphResult) spaces(n int) string {
@@ -139,6 +233,8 @@ type DepsCrawler struct {
 	vetScanner       *vet.VetScanner
 	rootpkgGraphNode *pkgGraphNode
 	maxDepth         int
+	sourcePath       string
+	indexUrls        []string
 }
 
 type recursiveCrawler struct {
@@ -155,7 +251,7 @@ type packageAnalyzer struct {
 	pkgManager   *pypi.PypiPackageManager
 }
 
-func newPackageAnalyzer() (*packageAnalyzer, error) {
+func newPackageAnalyzer(indexUrls []string) (*packageAnalyzer, error) {
 	cf := imports.NewPyCodeParserFactory()
 	parser, err := cf.NewCodeParser()
 	if err != nil {
@@ -163,14 +259,14 @@ func newPackageAnalyzer() (*packageAnalyzer, error) {
 		return nil, err
 	}
 
-	pkgManager := pypi.NewPypiPackageManager()
+	pkgManager := pypi.NewPypiPackageManager(indexUrls)
 
 	return &packageAnalyzer{pyCodeParser: parser,
 		pkgManager: pkgManager}, nil
 }
 
 func (d *DepsCrawler) newRecursiveCrawler(graph iDepNodeGraph) (*recursiveCrawler, error) {
-	pkgAnalyzer, err := newPackageAnalyzer()
+	pkgAnalyzer, err := newPackageAnalyzer(d.indexUrls)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +309,9 @@ func NewDepsCrawler(vi *vet.VetInput) *DepsCrawler {
 	rootNode := createRootPackage(vi)
 	crawler := DepsCrawler{vetScanner: vetScanner,
 		rootpkgGraphNode: rootNode,
-		maxDepth:         vi.TransitiveDepth}
+		maxDepth:         vi.TransitiveDepth,
+		sourcePath:       vi.BaseDirectory,
+		indexUrls:        vi.IndexUrls}
 	return &crawler
 }
 
@@ -241,6 +339,14 @@ func (c *DepsCrawler) Crawl() (*graphResult, error) {
 		return nil, err
 	}
 	recCrawler.addNode2Queue(c.rootpkgGraphNode)
+
+	modules := recCrawler.pkgAnalyzer.extractImportedModules(c.sourcePath)
+	c.rootpkgGraphNode.pkg.AddImportedModules(modules)
+	expModules, err := recCrawler.pkgAnalyzer.extractExportedModules(c.sourcePath)
+	if err != nil {
+		return nil, err
+	}
+	c.rootpkgGraphNode.pkg.AddExportedModules(expModules)
 
 	// Scan the base Project to find dependencies
 	vetReport, err := c.vetScanner.StartScan()
@@ -394,10 +500,14 @@ Find all exported modules by package itself that can be imported by others
 */
 func (r *packageAnalyzer) extractExportedModules(sourcePath string) ([]string, error) {
 	ctx := context.Background()
+	log.Debugf("Finding Exported module at %s", sourcePath)
 	exportedModules, err := r.pyCodeParser.FindExportedModules(ctx, sourcePath)
 	if err != nil {
 		log.Debugf("Error while finding exported modules %s", err)
 		return nil, err
 	}
-	return exportedModules.GetExportedModules(), nil
+	modules := exportedModules.GetExportedModules()
+	rp, _ := dir.FindTopLevelModules(sourcePath)
+	log.Debugf("Found Exported modules  %s %s %s", modules, rp, err)
+	return modules, nil
 }
