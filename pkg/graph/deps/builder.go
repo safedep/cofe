@@ -23,10 +23,28 @@ import (
 )
 
 var depth2color = map[int]string{
-	0: "#e84393", //blue
+	0: "#AEEA00", //blue
 	1: "#74b9ff", //blue
-	2: "#fdcb6e", //yellow
-	3: "#ffeaa7", // yellow
+	2: "#E1BEE7", //yellow
+	3: "#E1BEE7", // yellow
+	4: "#E1BEE7", // yellow
+	5: "#E1BEE7", // yellow
+
+}
+
+var score2Color = map[int]string{
+	0:  "#BBDEFB", //blue
+	1:  "#BBDEFB", //blue
+	2:  "#BBDEFB", //blue
+	3:  "#D500F9", // Purple
+	4:  "#D500F9", // Purple
+	5:  "#D500F9", // Purple
+	6:  "#E64A19", // Orange
+	7:  "#E64A19", // Orange
+	8:  "#E64A19", // Orange
+	9:  "#D32F2F", // Orange
+	10: "#D32F2F", // Red
+
 }
 
 type graphResult struct {
@@ -133,6 +151,25 @@ func (g *graphResult) depth2Color(depth int) string {
 	}
 
 	return c
+}
+
+func (g *graphResult) score2Color(score int) string {
+	c, ok := score2Color[score]
+	if !ok {
+		return "#b2bec3" //grey color
+	}
+
+	return c
+}
+
+func (g *graphResult) node2Color(n iDepNode) string {
+	pkgNode, _ := n.(*pkgGraphNode)
+
+	if pkgNode.pkg.GetMaxVulnScore() > 7 {
+		return g.score2Color(pkgNode.pkg.GetMaxVulnScore())
+	} else {
+		return g.depth2Color(pkgNode.GetDepth())
+	}
 }
 
 // useful to generate csv content
@@ -276,7 +313,7 @@ func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error
 		pkgNode := v.(*pkgGraphNode)
 		recordRow := []string{
 			v.Key(),
-			g.depth2Color(v.GetDepth()),
+			g.node2Color(pkgNode),
 			strconv.Itoa(v.GetDepth()),
 			strconv.Itoa(v.GetDepth()),
 			strconv.Itoa(pkgNode.pkg.GetMaxVulnScore()),
