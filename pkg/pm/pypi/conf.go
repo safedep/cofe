@@ -5,7 +5,7 @@ import (
 
 	"github.com/bigkevmcd/go-configparser"
 	"github.com/mitchellh/go-homedir"
-	"github.com/safedep/dry/log"
+	log "github.com/safedep/vet/pkg/common/logger"
 )
 
 type IndexUrlsConf struct {

@@ -23,6 +23,7 @@ func newScanCommand() *cobra.Command {
 		Use:   "scan",
 		Short: "Scan and analyse package manifests",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			initLogger()
 			iconf := pypi.IndexUrlsConf{ReadStdPipConf: readStdPipConf}
 			indexUrls, err := pypi.GetIndexURLs(iconf)
 			if err != nil {
@@ -83,6 +84,7 @@ func newDownloadPypiPkgCommand() *cobra.Command {
 		Use:   "pypi",
 		Short: "Download and extract pypi package",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			initLogger()
 			iconf := pypi.IndexUrlsConf{ReadStdPipConf: readStdPipConf}
 			indexUrls, err := pypi.GetIndexURLs(iconf)
 			pm := pypi.NewPypiPackageManager(indexUrls)

@@ -16,7 +16,6 @@ import (
 	"github.com/safedep/deps_weaver/pkg/core/models"
 	"github.com/safedep/deps_weaver/pkg/pm/pypi"
 	"github.com/safedep/deps_weaver/pkg/vet"
-	"github.com/safedep/dry/log"
 	"github.com/safedep/vet/pkg/common/logger"
 )
 
@@ -54,7 +53,7 @@ func (g *graphResult) addExportedModulesMap() {
 func (g *graphResult) RemoveEdgesBasedOnImportedModules() error {
 	edges, err := g.graph.Edges()
 	if err != nil {
-		log.Debugf("Error while getting edges %s", err)
+		logger.Debugf("Error while getting edges %s", err)
 		return err
 	}
 	for _, edge := range edges {
@@ -71,8 +70,8 @@ func (g *graphResult) RemoveEdgesBasedOnImportedModules() error {
 		targetInImports := g.targetPkgNameInImportedModules(targetPkgName, importedModules)
 		if !targetInImports && !ieMatch {
 			g.graph.RemoveEdge(sv.Key(), tv.Key())
-			log.Debugf("Removed Edge from %s to %s - reason imported exported modules mismatch", sv.Key(), tv.Key())
-			log.Debugf("Imported Modules at source %s, Exported Modules %s", importedModules, expotedModules)
+			logger.Debugf("Removed Edge from %s to %s - reason imported exported modules mismatch", sv.Key(), tv.Key())
+			logger.Debugf("Imported Modules at source %s, Exported Modules %s", importedModules, expotedModules)
 
 		}
 	}
@@ -141,7 +140,7 @@ func (g *graphResult) ReachableGraph() (iDepNodeGraph, error) {
 
 	vmap, err := gg.AdjacencyMap()
 	if err != nil {
-		log.Debugf("\n Error while getting map %s", err)
+		logger.Debugf("\n Error while getting map %s", err)
 	}
 
 	for v, edges := range vmap {
@@ -150,9 +149,9 @@ func (g *graphResult) ReachableGraph() (iDepNodeGraph, error) {
 				// Remove both edges to and fro
 				err := gg.RemoveEdge(v, t)
 				if err != nil {
-					log.Debugf("Error while removing edge %s", err)
+					logger.Debugf("Error while removing edge %s", err)
 				} else {
-					log.Debugf("Removing edge %s %s", v, t)
+					logger.Debugf("Removing edge %s %s", v, t)
 				}
 			}
 		}
@@ -162,21 +161,21 @@ func (g *graphResult) ReachableGraph() (iDepNodeGraph, error) {
 		if _, ok1 := reachableNodes[v]; !ok1 {
 			err := gg.RemoveVertex(v)
 			if err != nil {
-				log.Debugf("Error while removing vertex %s %s", v, err)
+				logger.Debugf("Error while removing vertex %s %s", v, err)
 			} else {
-				log.Debugf("Removed vertex %s", v)
+				logger.Debugf("Removed vertex %s", v)
 			}
 
 			// err = gg.RemoveVertex(v)
-			// log.Debugf("Removed vertex again %s", err)
+			// logger.Debugf("Removed vertex again %s", err)
 			// _, err = gg.Vertex(v)
-			// log.Debugf("Fetching after deletion %s", err)
+			// logger.Debugf("Fetching after deletion %s", err)
 
 		}
 	}
 
 	_, err = gg.Vertex("tqdm")
-	log.Debugf("tqdm Fetching after deletion %s", err)
+	logger.Debugf("tqdm Fetching after deletion %s", err)
 	return gg, nil
 }
 
@@ -330,12 +329,12 @@ func (c *DepsCrawler) Crawl() (*graphResult, error) {
 	graph = G.New[string](iDepNodeHashFunc, G.Directed())
 	recCrawler, err := c.newRecursiveCrawler(graph)
 	if err != nil {
-		log.Debugf("Error will creating internal crawler %s", err)
+		logger.Debugf("Error will creating internal crawler %s", err)
 		return nil, err
 	}
 	err = graph.AddVertex(c.rootpkgGraphNode)
 	if errors.Is(err, G.ErrVertexAlreadyExists) {
-		log.Debugf("Error Root Node Already Exists...")
+		logger.Debugf("Error Root Node Already Exists...")
 		return nil, err
 	}
 	recCrawler.addNode2Queue(c.rootpkgGraphNode)
@@ -351,7 +350,7 @@ func (c *DepsCrawler) Crawl() (*graphResult, error) {
 	// Scan the base Project to find dependencies
 	vetReport, err := c.vetScanner.StartScan()
 	if err != nil {
-		log.Debugf("Error while extracting dependencies from base project via vet %s", err)
+		logger.Debugf("Error while extracting dependencies from base project via vet %s", err)
 		return nil, err
 	}
 
@@ -360,7 +359,7 @@ func (c *DepsCrawler) Crawl() (*graphResult, error) {
 		n := &pkgGraphNode{pkg: *pkg, depth: c.rootpkgGraphNode.GetDepth() + 1}
 		err := graph.AddVertex(n)
 		if err != nil {
-			log.Debugf("Error while adding vertex %s", err)
+			logger.Debugf("Error while adding vertex %s", err)
 		} else {
 			recCrawler.addNode2Queue(n)
 		}
@@ -377,7 +376,7 @@ func (c *DepsCrawler) Crawl() (*graphResult, error) {
 func (r *recursiveCrawler) crawl() error {
 	for {
 		size, _ := r.graph.Size()
-		log.Debugf("Queue Length %d, Edges %d", len(r.queue), size)
+		logger.Debugf("Queue Length %d, Edges %d", len(r.queue), size)
 		vertex := r.nextVertexFromQueue()
 		if vertex == nil {
 			break
@@ -386,13 +385,13 @@ func (r *recursiveCrawler) crawl() error {
 		// r.markVisited(vertex)
 		nodes, err := r.processNode(vertex)
 		if err != nil {
-			log.Debugf("\tError processing node %s..", vertex.Key())
+			logger.Debugf("\tError processing node %s..", vertex.Key())
 		}
 		for _, n := range nodes {
 			err := r.graph.AddVertex(n)
 			if err != nil {
 				if !errors.Is(err, G.ErrVertexAlreadyExists) {
-					log.Debugf("Error while adding vertex %s", err)
+					logger.Debugf("Error while adding vertex %s", err)
 				}
 			} else {
 				// fmt.Printf("\tAdding node %s to the queue..\n", n.Key())
@@ -416,7 +415,7 @@ func (r *recursiveCrawler) processNode(node iDepNode) ([]iDepNode, error) {
 		}
 
 	} else {
-		log.Debugf("Found Non Pkg Node not handeled while crawling")
+		logger.Debugf("Found Non Pkg Node not handeled while crawling")
 	}
 
 	return depNodes, nil
@@ -426,14 +425,14 @@ func (r *recursiveCrawler) downloadAndProcessPkg(parentNode *pkgGraphNode) ([]iD
 	var depNodes []iDepNode
 	baseDir, err := os.MkdirTemp("", "deps-weaver")
 	if err != nil {
-		log.Debugf("Error while creating a temp dir %s", err)
+		logger.Debugf("Error while creating a temp dir %s", err)
 		return depNodes, err
 	}
 	defer os.RemoveAll(baseDir)
 
 	packages, err := r.pkgAnalyzer.extractPackagesFromManifest(baseDir, &parentNode.pkg)
 	if err != nil {
-		log.Debugf("Error while downloading and processing the pkg %s", err)
+		logger.Debugf("Error while downloading and processing the pkg %s", err)
 		return depNodes, err
 	}
 
@@ -452,13 +451,13 @@ func (r *packageAnalyzer) extractPackagesFromManifest(baseDir string,
 	packages := make([]models.Package, 0)
 	_, sourcePath, err := r.pkgManager.DownloadAndGetPackageInfo(baseDir, pd.Name, pd.Version)
 	if err != nil {
-		log.Debugf("Error while downloading packages %s", err)
+		logger.Debugf("Error while downloading packages %s", err)
 		return packages, err
 	}
 
 	manifestAbsPath, pkgDetails, err := pypi.ParsePythonWheelDist(sourcePath)
 	if err != nil {
-		log.Debugf("Error while processing package %s", err)
+		logger.Debugf("Error while processing package %s", err)
 		return packages, err
 	}
 
@@ -500,14 +499,14 @@ Find all exported modules by package itself that can be imported by others
 */
 func (r *packageAnalyzer) extractExportedModules(sourcePath string) ([]string, error) {
 	ctx := context.Background()
-	log.Debugf("Finding Exported module at %s", sourcePath)
+	logger.Debugf("Finding Exported module at %s", sourcePath)
 	exportedModules, err := r.pyCodeParser.FindExportedModules(ctx, sourcePath)
 	if err != nil {
-		log.Debugf("Error while finding exported modules %s", err)
+		logger.Debugf("Error while finding exported modules %s", err)
 		return nil, err
 	}
 	modules := exportedModules.GetExportedModules()
 	rp, _ := dir.FindTopLevelModules(sourcePath)
-	log.Debugf("Found Exported modules  %s %s %s", modules, rp, err)
+	logger.Debugf("Found Exported modules  %s %s %s", modules, rp, err)
 	return modules, nil
 }

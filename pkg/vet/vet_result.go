@@ -1,11 +1,11 @@
 package vet
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/safedep/deps_weaver/pkg/core/models"
+	"github.com/safedep/vet/pkg/common/logger"
 	vet_models "github.com/safedep/vet/pkg/models"
 )
 
@@ -60,7 +60,7 @@ func (v *VetReport) relativePath(basePath, fullPath string) string {
 
 func (v *VetReport) Print() {
 	for _, pkg := range v.packages.GetPackages() {
-		fmt.Printf("Manifest %s Package %s %s\n", pkg.Manifest.Path,
+		logger.Warnf("Manifest %s Package %s %s\n", pkg.Manifest.Path,
 			pkg.PackageDetails.Name, pkg.PackageDetails.Version)
 	}
 }

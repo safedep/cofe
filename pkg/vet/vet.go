@@ -1,12 +1,10 @@
 package vet
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/google/go-github/v54/github"
-	"github.com/safedep/dry/log"
 	"github.com/safedep/dry/utils"
 	"github.com/safedep/vet/pkg/analyzer"
 	"github.com/safedep/vet/pkg/common/logger"
@@ -49,7 +47,7 @@ func NewVetScanner(input *VetInput) *VetScanner {
 func (v *VetScanner) StartScan() (*VetReport, error) {
 	r, err := v.internalStartScan()
 	if err != nil {
-		log.Debugf("Failed while running vet to find dependencies.. %s", err)
+		logger.Debugf("Failed while running vet to find dependencies.. %s", err)
 	}
 
 	return r, err
@@ -210,7 +208,7 @@ func (v *VetScanner) internalStartScan() (*VetReport, error) {
 			logger.Debugf("Starting to enumerate manifests")
 		},
 		OnEnumerateManifest: func(manifest *models.PackageManifest) {
-			fmt.Printf("Discovered a manifest at %s with %d packages",
+			logger.Debugf("Discovered a manifest at %s with %d packages",
 				manifest.GetDisplayPath(), manifest.GetPackagesCount())
 			// ui.IncrementTrackerTotal(packageManifestTracker, 1)
 			// ui.IncrementTrackerTotal(packageTracker, int64(manifest.GetPackagesCount()))

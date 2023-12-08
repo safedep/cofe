@@ -61,7 +61,7 @@ func TestPypiPackageManager_DownloadAndGetPackageInfo(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Initialize the package manager
-	manager := NewPrivatePypiPackageManager(pypiURL)
+	manager := NewPrivatePypiPackageManager([]string{pypiURL})
 
 	// Test case 1: Successful download and package info retrieval
 	data, extractDir, err := manager.DownloadAndGetPackageInfo(tempDir, "mockpackage", "")

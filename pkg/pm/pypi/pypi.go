@@ -1,22 +1,24 @@
 package pypi
 
 import (
+	"archive/tar"
+	"archive/zip"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
-
 	"errors"
+	"fmt"
+	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
 	hm "github.com/safedep/deps_weaver/pkg/pm/http_manager"
-	"github.com/safedep/dry/log"
+	"github.com/safedep/vet/pkg/common/logger"
+)
 
-	"archive/tar"
-	"archive/zip"
-	"io"
-	"net/url"
+var (
+	PkgNotFound = errors.New("Pkg not found on the index server")
 )
 
 type PypiPackageManager struct {
@@ -134,11 +136,11 @@ func (s *PypiPackageManager) getPackageInfo(client *hm.PypiHttpClient, name stri
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("Retrieving PyPI package metadata from %s\n", url)
+	logger.Debugf("Retrieving PyPI package metadata from %s\n", url)
 
 	response, err := client.Get(url)
 	if err != nil {
-		log.Debugf("Error while retrieving package %s\n", err)
+		logger.Debugf("Error while retrieving package %s\n", err)
 		return nil, nil
 	}
 	defer response.Body.Close()
@@ -160,7 +162,7 @@ func (s *PypiPackageManager) getPackageInfo(client *hm.PypiHttpClient, name stri
 }
 
 func (s *PypiPackageManager) downloadCompressed(url, archivePath, targetPath string) error {
-	log.Debugf("Downloading package archive from %s into %s\n", url, targetPath)
+	logger.Debugf("Downloading package archive from %s into %s\n", url, targetPath)
 
 	response, err := s.httpm.Get(url)
 	if err != nil {
@@ -179,20 +181,20 @@ func (s *PypiPackageManager) downloadCompressed(url, archivePath, targetPath str
 		return err
 	}
 
-	log.Debugf("Extracting archive %s to directory %s\n", archivePath, targetPath)
+	logger.Debugf("Extracting archive %s to directory %s\n", archivePath, targetPath)
 
 	err = s.safeExtract(archivePath, targetPath)
 	if err != nil {
-		log.Debugf("Error extracting the file: %v\n", err)
+		logger.Debugf("Error extracting the file: %v\n", err)
 		return err
 	}
 
-	log.Debugf("Successfully extracted files to %s\n", targetPath)
+	logger.Debugf("Successfully extracted files to %s\n", targetPath)
 
-	log.Debugf("Removing temporary archive file %s\n", archivePath)
+	logger.Debugf("Removing temporary archive file %s\n", archivePath)
 	err = os.Remove(archivePath)
 	if err != nil {
-		log.Debugf("Error removing temporary archive file: %v\n", err)
+		logger.Debugf("Error removing temporary archive file: %v\n", err)
 		return err
 	}
 
