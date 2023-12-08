@@ -31,6 +31,8 @@ func (v *VetReport) AddVetManifest(man *vet_models.PackageManifest) {
 			CompareAs: p.CompareAs}
 		pkg := models.Package{PackageDetails: pkgDetails, Manifest: &manifest}
 		v.packages.AddPackage(&pkg)
+		vulns := p.Insights.Vulnerabilities
+		pkg.AddVulnerabilities(vulns)
 	}
 }
 

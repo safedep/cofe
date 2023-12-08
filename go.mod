@@ -9,6 +9,7 @@ require (
 	github.com/google/go-github/v54 v54.0.0
 	github.com/google/osv-scanner v1.4.3
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/pandatix/go-cvss v0.6.2
 	github.com/safedep/dry v0.0.0-20231029184244-7af43c4ecd7c
 	github.com/safedep/vet v1.4.1-0.20231130053558-084e8341fb62
 	github.com/spf13/cobra v1.8.0
@@ -17,8 +18,8 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/kr/pretty v0.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 )
 
 require (
@@ -114,12 +115,12 @@ require (
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	google.golang.org/appengine v1.6.8 // indirect
+	google.golang.org/appengine v1.6.8
 	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect

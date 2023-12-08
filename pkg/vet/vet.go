@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/go-github/v54/github"
+	"github.com/safedep/deps_weaver/pkg/vet/auth"
 	"github.com/safedep/dry/utils"
 	"github.com/safedep/vet/pkg/analyzer"
 	"github.com/safedep/vet/pkg/common/logger"
@@ -41,6 +42,9 @@ type VetScanner struct {
 }
 
 func NewVetScanner(input *VetInput) *VetScanner {
+	if input.Concurrency == 0 {
+		input.Concurrency = 2
+	}
 	return &VetScanner{input: input}
 }
 
@@ -107,34 +111,34 @@ func (v *VetScanner) internalStartScan() (*VetReport, error) {
 	readerList = append(readerList, reader)
 
 	analyzers := []analyzer.Analyzer{}
-	if !utils.IsEmptyString(v.input.CelFilterExpression) {
-		task, err := analyzer.NewCelFilterAnalyzer(v.input.CelFilterExpression,
-			v.input.CelFilterFailOnMatch)
-		if err != nil {
-			return nil, err
-		}
+	// if !utils.IsEmptyString(v.input.CelFilterExpression) {
+	// 	task, err := analyzer.NewCelFilterAnalyzer(v.input.CelFilterExpression,
+	// 		v.input.CelFilterFailOnMatch)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		analyzers = append(analyzers, task)
-	}
+	// 	analyzers = append(analyzers, task)
+	// }
 
-	if !utils.IsEmptyString(v.input.CelFilterSuiteFile) {
-		task, err := analyzer.NewCelFilterSuiteAnalyzer(v.input.CelFilterSuiteFile,
-			v.input.CelFilterFailOnMatch)
-		if err != nil {
-			return nil, err
-		}
+	// if !utils.IsEmptyString(v.input.CelFilterSuiteFile) {
+	// 	task, err := analyzer.NewCelFilterSuiteAnalyzer(v.input.CelFilterSuiteFile,
+	// 		v.input.CelFilterFailOnMatch)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		analyzers = append(analyzers, task)
-	}
+	// 	analyzers = append(analyzers, task)
+	// }
 
 	reporters := []reporter.Reporter{}
 	// if v.input.ConsoleReport {
-	// 	rp, err := reporter.NewConsoleReporter()
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	rp, err := reporter.NewConsoleReporter()
+	if err != nil {
+		return nil, err
+	}
 
-	// 	reporters = append(reporters, rp)
+	reporters = append(reporters, rp)
 	// }
 
 	// if v.input.SummaryReport {
@@ -177,17 +181,18 @@ func (v *VetScanner) internalStartScan() (*VetReport, error) {
 	}
 
 	//DO not need insights right now.
-	// insightsEnricher, err := scanner.NewInsightBasedPackageEnricher(scanner.InsightsBasedPackageMetaEnricherConfig{
-	// 	ApiUrl:     auth.ApiUrl(),
-	// 	ApiAuthKey: auth.ApiKey(),
-	// })
+	insightsEnricher, err := scanner.NewInsightBasedPackageEnricher(scanner.InsightsBasedPackageMetaEnricherConfig{
+		ApiUrl:     auth.ApiUrl(),
+		ApiAuthKey: auth.ApiKey(),
+	})
 
-	// if err != nil {
-	// 	return err
-	// }
+	if err != nil {
+		logger.Debugf("Error while getting Vet Keys... %s", err)
+		return nil, err
+	}
 
 	enrichers := []scanner.PackageMetaEnricher{
-		// insightsEnricher,
+		insightsEnricher,
 	}
 
 	pmScanner := scanner.NewPackageManifestScanner(scanner.Config{
@@ -247,6 +252,7 @@ func (v *VetScanner) internalStartScan() (*VetReport, error) {
 		},
 	})
 
+	logger.Debugf("Starting Package Scanner using Vet... ")
 	err = pmScanner.Start()
 	if err != nil {
 		return nil, err

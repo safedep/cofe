@@ -201,14 +201,13 @@ func (g *graphResult) exportEdges2CSV(gg iDepNodeGraph, outpath string) error {
 	// Write each record to the CSV file
 	for _, edge := range edges {
 		sv, _ := g.graph.Vertex(edge.Source)
-		// tv, _ := g.graph.Vertex(edge.Target)
-		// targetNode, _ := tv.(*pkgGraphNode)
 		sourceNode, _ := sv.(*pkgGraphNode)
 		recordRow := []string{
 			edge.Source,
 			edge.Target,
 			g.depth2Color(sourceNode.depth),
 			g.depth2timestamp(sourceNode.depth),
+			strconv.Itoa(sourceNode.pkg.GetMaxVulnScore()),
 		}
 		if err := writer.Write(recordRow); err != nil {
 			return err
@@ -220,13 +219,36 @@ func (g *graphResult) exportEdges2CSV(gg iDepNodeGraph, outpath string) error {
 
 }
 
-func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error {
+func (g *graphResult) getUniqueVertices(gg iDepNodeGraph) (*[]iDepNode, error) {
 	edges, err := gg.Edges()
 	if err != nil {
 		logger.Debugf("Error while getting edges %s", err)
-		return err
+		return nil, err
 	}
 
+	var vertices []iDepNode
+	cache := make(map[string]bool, 0)
+	// Write each record to the CSV file
+	for _, edge := range edges {
+		sv, _ := g.graph.Vertex(edge.Source)
+		_, ok := cache[edge.Source]
+		if !ok {
+			cache[edge.Source] = true
+			vertices = append(vertices, sv)
+		}
+
+		tv, _ := g.graph.Vertex(edge.Target)
+		_, ok = cache[edge.Target]
+		if !ok {
+			cache[edge.Target] = true
+			vertices = append(vertices, tv)
+		}
+	}
+
+	return &vertices, nil
+}
+
+func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error {
 	// Create or open the CSV file for writing
 	file, err := os.Create(outpath)
 	if err != nil {
@@ -239,35 +261,31 @@ func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error
 	defer writer.Flush()
 
 	// Write the header row
-	header := []string{"id", "node_color", "node_value", "type"}
+	header := []string{"id", "node_color", "node_value", "type", "max_score"}
 	if err := writer.Write(header); err != nil {
 		return err
 	}
 
-	i := 0
-	cache := make(map[string]bool, 0)
-	// Write each record to the CSV file
-	for _, edge := range edges {
-		sv, _ := g.graph.Vertex(edge.Source)
-		_, ok := cache[edge.Source]
-		if ok {
-			continue
-		} else {
-			cache[edge.Source] = true
-		}
-		sourceNode, _ := sv.(*pkgGraphNode)
-		recordRow := []string{
-			edge.Source,
-			g.depth2Color(sourceNode.depth),
-			strconv.Itoa(sourceNode.depth),
-			strconv.Itoa(sourceNode.depth),
-		}
-		if err := writer.Write(recordRow); err != nil {
-			return err
-		}
-		i += 1
+	vertices, err := g.getUniqueVertices(gg)
+	if err != nil {
+		logger.Debugf("Error while getting edges %s", err)
+		return err
 	}
 
+	for _, v := range *vertices {
+		pkgNode := v.(*pkgGraphNode)
+		recordRow := []string{
+			v.Key(),
+			g.depth2Color(v.GetDepth()),
+			strconv.Itoa(v.GetDepth()),
+			strconv.Itoa(v.GetDepth()),
+			strconv.Itoa(pkgNode.pkg.GetMaxVulnScore()),
+		}
+		if err := writer.Write(recordRow); err != nil {
+			logger.Warnf("Error while metadata writig to CSV file %s", err)
+			return err
+		}
+	}
 	return nil
 
 }

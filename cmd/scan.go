@@ -34,6 +34,7 @@ func newScanCommand() *cobra.Command {
 				return fmt.Errorf("No Index Urls found..")
 			}
 			vi.IndexUrls = indexUrls
+			vi.Concurrency = 3
 			crawler := builder.NewDepsCrawler(&vi)
 			gres, err := crawler.Crawl()
 			if err != nil {
