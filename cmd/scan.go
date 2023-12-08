@@ -17,6 +17,7 @@ import (
 var vi vet.VetInput
 var export2Graphviz string
 var readStdPipConf bool
+var export2Csv string
 
 func newScanCommand() *cobra.Command {
 	cmd := cobra.Command{
@@ -41,14 +42,24 @@ func newScanCommand() *cobra.Command {
 			}
 			gres.Print()
 			if export2Graphviz != "" {
-				gres.Export2Graphviz(fmt.Sprintf("%s.orig", export2Graphviz), true)
+				gres.Export2Graphviz(fmt.Sprintf("%s.orig.dot", export2Graphviz), false)
 			}
+
+			if export2Csv != "" {
+				gres.Export2CSV(fmt.Sprintf("%s.orig.csv", export2Csv), false)
+			}
+
 			gres.RemoveEdgesBasedOnImportedModules()
 			gres.Print()
 
 			if export2Graphviz != "" {
 				gres.Export2Graphviz(export2Graphviz, true)
 			}
+
+			if export2Csv != "" {
+				gres.Export2CSV(export2Csv, true)
+			}
+
 			return nil
 		},
 	}
@@ -67,6 +78,8 @@ func newScanCommand() *cobra.Command {
 		"Depth to analyze transitive dependencies")
 	cmd.Flags().StringVarP(&export2Graphviz, "graphviz", "", "",
 		"Export to graphviz")
+	cmd.Flags().StringVarP(&export2Csv, "csv", "", "",
+		"Export to csv")
 
 	cmd.Flags().BoolVarP(&readStdPipConf, "read-std-conf", "", false,
 		"Location of Pip file ")

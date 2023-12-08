@@ -2,11 +2,14 @@ package builder
 
 import (
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	G "github.com/dominikbraun/graph"
 	"github.com/dominikbraun/graph/draw"
@@ -19,11 +22,19 @@ import (
 	"github.com/safedep/vet/pkg/common/logger"
 )
 
+var depth2color = map[int]string{
+	0: "#e84393", //blue
+	1: "#74b9ff", //blue
+	2: "#fdcb6e", //yellow
+	3: "#ffeaa7", // yellow
+}
+
 type graphResult struct {
 	rootNode iDepNode
 	graph    iDepNodeGraph
 	// import2PkgMap map[string][]iDepNode
-	export2PkgMap map[string][]iDepNode
+	export2PkgMap        map[string][]iDepNode
+	cachedReachableGraph iDepNodeGraph
 }
 
 func newGraphResult(rootNode iDepNode, graph iDepNodeGraph) *graphResult {
@@ -98,20 +109,171 @@ func (g *graphResult) stringsIntersect(src []string, des []string) bool {
 	return false
 }
 
-func (g *graphResult) Export2Graphviz(outpath string, reachable bool) error {
-	file, _ := os.Create(outpath)
-	defer file.Close()
+func (g *graphResult) getIDepNodeGraph(reachable bool) (iDepNodeGraph, error) {
 	if reachable {
-		gg, err := g.ReachableGraph()
-		if err != nil {
+		if g.cachedReachableGraph == nil {
+			gg, err := g.ReachableGraph()
+			if err != nil {
+				logger.Debugf("Error while genenerating reachable graph %s", err)
+				return nil, err
+			}
+			g.cachedReachableGraph = gg
+		}
+		return g.cachedReachableGraph, nil
+	}
+
+	return g.graph, nil
+}
+
+// useful to generate csv content
+func (g *graphResult) depth2Color(depth int) string {
+	c, ok := depth2color[depth]
+	if !ok {
+		return "#b2bec3" //grey color
+	}
+
+	return c
+}
+
+// useful to generate csv content
+func (g *graphResult) depth2timestamp(depth int) string {
+	currentTime := time.Now()
+	newTime := currentTime.Add(time.Duration(depth*3600) * time.Second)
+	return newTime.Format(time.RFC3339)
+}
+
+func (g *graphResult) Export2Graphviz(graphviz string, reachable bool) error {
+	file, _ := os.Create(graphviz)
+	defer file.Close()
+	gg, err := g.getIDepNodeGraph(reachable)
+	if err != nil {
+		return err
+	}
+	return draw.DOT(gg, file)
+}
+
+func (g *graphResult) Export2CSV(outpath string, reachable bool) error {
+	gg, err := g.getIDepNodeGraph(reachable)
+	if err != nil {
+		return err
+	}
+
+	if err := g.exportEdges2CSV(gg, outpath); err != nil {
+		logger.Debugf("Error while experting edges to csv %s", err)
+		return err
+	}
+
+	metadataFile := fmt.Sprintf("%s.metadata.csv", outpath)
+	if err := g.exportMetadata2CSV(gg, metadataFile); err != nil {
+		logger.Debugf("Error while experting metadata to csv %s", err)
+		return err
+	}
+
+	return nil
+
+}
+
+func (g *graphResult) exportEdges2CSV(gg iDepNodeGraph, outpath string) error {
+	edges, err := gg.Edges()
+	if err != nil {
+		logger.Debugf("Error while getting edges %s", err)
+		return err
+	}
+
+	// Create or open the CSV file for writing
+	file, err := os.Create(outpath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create a CSV writer
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write the header row
+	header := []string{"source", "target", "color", "time"}
+	if err := writer.Write(header); err != nil {
+		return err
+	}
+
+	i := 0
+	// Write each record to the CSV file
+	for _, edge := range edges {
+		sv, _ := g.graph.Vertex(edge.Source)
+		// tv, _ := g.graph.Vertex(edge.Target)
+		// targetNode, _ := tv.(*pkgGraphNode)
+		sourceNode, _ := sv.(*pkgGraphNode)
+		recordRow := []string{
+			edge.Source,
+			edge.Target,
+			g.depth2Color(sourceNode.depth),
+			g.depth2timestamp(sourceNode.depth),
+		}
+		if err := writer.Write(recordRow); err != nil {
 			return err
 		}
-		return draw.DOT(gg, file)
+		i += 1
 	}
-	return draw.DOT(g.graph, file)
+
+	return nil
+
+}
+
+func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error {
+	edges, err := gg.Edges()
+	if err != nil {
+		logger.Debugf("Error while getting edges %s", err)
+		return err
+	}
+
+	// Create or open the CSV file for writing
+	file, err := os.Create(outpath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create a CSV writer
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write the header row
+	header := []string{"id", "node_color", "node_value", "type"}
+	if err := writer.Write(header); err != nil {
+		return err
+	}
+
+	i := 0
+	cache := make(map[string]bool, 0)
+	// Write each record to the CSV file
+	for _, edge := range edges {
+		sv, _ := g.graph.Vertex(edge.Source)
+		_, ok := cache[edge.Source]
+		if ok {
+			continue
+		} else {
+			cache[edge.Source] = true
+		}
+		sourceNode, _ := sv.(*pkgGraphNode)
+		recordRow := []string{
+			edge.Source,
+			g.depth2Color(sourceNode.depth),
+			strconv.Itoa(sourceNode.depth),
+			strconv.Itoa(sourceNode.depth),
+		}
+		if err := writer.Write(recordRow); err != nil {
+			return err
+		}
+		i += 1
+	}
+
+	return nil
+
 }
 
 func (g *graphResult) Print() {
+	fmt.Printf("%s\n", g.rootNode.Key())
 	_ = G.BFS(g.graph, g.rootNode.Key(), func(value string) bool {
 		node, err := g.graph.Vertex(value)
 		if err != nil {
@@ -125,9 +287,10 @@ func (g *graphResult) Print() {
 
 func (g *graphResult) ReachableGraph() (iDepNodeGraph, error) {
 
-	fmt.Printf("Reducing Reachable Graph ...")
+	logger.Debugf("Reducing Reachable Graph ...")
 	reachableNodes := make(map[string]bool, 0)
 
+	reachableNodes[g.rootNode.Key()] = true
 	_ = G.BFS(g.graph, g.rootNode.Key(), func(value string) bool {
 		reachableNodes[value] = true
 		return false
@@ -318,7 +481,11 @@ func createRootPackage(vi *vet.VetInput) *pkgGraphNode {
 	mani := models.Manifest{Path: vi.BaseDirectory,
 		DisplayPath: vi.BaseDirectory,
 		Ecosystem:   string(lockfile.PipEcosystem)}
-	_, name := path.Split(vi.BaseDirectory)
+
+	name := path.Base(vi.BaseDirectory)
+	if name == "" {
+		name = "root"
+	}
 	pd := models.PackageDetails{Name: name}
 	return &pkgGraphNode{pkg: models.Package{PackageDetails: pd, Manifest: &mani}, depth: 0}
 }
@@ -337,7 +504,8 @@ func (c *DepsCrawler) Crawl() (*graphResult, error) {
 		logger.Debugf("Error Root Node Already Exists...")
 		return nil, err
 	}
-	recCrawler.addNode2Queue(c.rootpkgGraphNode)
+
+	// recCrawler.addNode2Queue(c.rootpkgGraphNode)
 
 	modules := recCrawler.pkgAnalyzer.extractImportedModules(c.sourcePath)
 	c.rootpkgGraphNode.pkg.AddImportedModules(modules)
