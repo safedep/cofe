@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/safedep/deps_weaver/pkg/pm/http_manager"
+	hm "github.com/safedep/deps_weaver/pkg/pm/http_manager"
 	"github.com/safedep/dry/log"
 
 	"archive/tar"
@@ -21,11 +21,11 @@ import (
 
 type PypiPackageManager struct {
 	// pypiUrl string
-	httpm *http_manager.HTTPClientManager
+	httpm *hm.HTTPClientManager
 }
 
 func NewPrivatePypiPackageManager(indexUrls []string) *PypiPackageManager {
-	httm := http_manager.NewHTTPClientManager()
+	httm := hm.NewHTTPClientManager()
 	for _, pypiUrl := range indexUrls {
 		httm.AddURL(pypiUrl)
 	}
@@ -37,40 +37,56 @@ func NewPypiPackageManager(indexUrls []string) *PypiPackageManager {
 }
 
 func (s *PypiPackageManager) DownloadAndGetPackageInfo(directory, packageName, version string) (map[string]interface{}, string, error) {
-	extractDir, err := s.DownloadPackage(packageName, directory, version)
-	if err != nil {
-		return nil, "", err
+
+	clients := s.httpm.GetAllBaseURLs()
+	if len(clients) == 0 {
+		return nil, "", fmt.Errorf("No http clients found to get package info")
 	}
-	data, err := s.getPackageInfo(packageName)
-	if err != nil {
-		return nil, "", err
+
+	for _, client := range clients {
+		data, extractDir, err := s.downloadPackage(client, packageName, directory, version)
+		if err != nil {
+			continue
+		} else {
+			return data, extractDir, nil
+		}
 	}
-	return data, extractDir, nil
+	return nil, "", fmt.Errorf("Unpexted Error. Error from all pypi servers")
 }
 
-func (s *PypiPackageManager) DownloadPackage(packageName, directory, version string) (string, error) {
-	data, err := s.getPackageInfo(packageName)
+func (s *PypiPackageManager) downloadPackage(client *hm.PypiHttpClient, packageName, directory, version string) (map[string]interface{}, string, error) {
+	var data map[string]interface{}
+	var err error
+	data, err = s.getPackageInfo(client, packageName)
 	if err != nil {
-		return "", err
+		return data, "", err
 	}
 
 	releases, ok := data["releases"].(map[string]interface{})
 	if !ok {
-		return "", fmt.Errorf("Invalid 'releases' data in package info data length %d", len(data))
+		return data, "", fmt.Errorf("Invalid 'releases' data in package info data length %d", len(data))
+	}
+
+	latestVersion := ""
+	for v, _ := range releases {
+		latestVersion = v
+		break
 	}
 
 	if version == "" || version == "0.0.0" {
 		v, ok := data["info"].(map[string]interface{})["version"]
 		if ok {
 			version = v.(string)
+		} else if latestVersion != "" {
+			version = latestVersion
 		} else {
-			return "", fmt.Errorf("Error while extracting version %s", packageName)
+			return data, "", fmt.Errorf("Error while extracting version %s", packageName)
 		}
 	}
 
 	files, ok := releases[version].([]interface{})
 	if !ok {
-		return "", fmt.Errorf("Version %s for package %s doesn't exist", version, packageName)
+		return data, "", fmt.Errorf("Version %s for package %s doesn't exist", version, packageName)
 	}
 
 	var url, fileExtension string
@@ -96,7 +112,7 @@ func (s *PypiPackageManager) DownloadPackage(packageName, directory, version str
 	}
 
 	if url == "" || fileExtension == "" {
-		return "", errors.New(fmt.Sprintf("Compressed file for %s does not exist on PyPI", packageName))
+		return data, "", errors.New(fmt.Sprintf("Compressed file for %s does not exist on PyPI", packageName))
 	}
 
 	zippath := filepath.Join(directory, packageName+fileExtension)
@@ -104,62 +120,43 @@ func (s *PypiPackageManager) DownloadPackage(packageName, directory, version str
 
 	err = s.downloadCompressed(url, zippath, unzippedpath)
 	if err != nil {
-		return "", err
+		return data, "", err
 	}
 
-	return unzippedpath, nil
+	return data, unzippedpath, nil
 }
 
-func (s *PypiPackageManager) getPackageInfo(name string) (map[string]interface{}, error) {
+func (s *PypiPackageManager) getPackageInfo(client *hm.PypiHttpClient, name string) (map[string]interface{}, error) {
 
-	clients := s.httpm.GetAllBaseURLs()
-	var lastErr error
 	var data map[string]interface{}
-	if len(clients) == 0 {
-		return nil, fmt.Errorf("No http clients found to get package info")
+
+	url, err := url.JoinPath(client.BaseUrl, name, "json")
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("Retrieving PyPI package metadata from %s\n", url)
+
+	response, err := client.Get(url)
+	if err != nil {
+		log.Debugf("Error while retrieving package %s\n", err)
+		return nil, nil
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != 200 {
+		return nil, fmt.Errorf("Received status code: %d from PyPI", response.StatusCode)
 	}
 
-	for _, client := range clients {
-
-		url, err := url.JoinPath(client.BaseUrl, name, "json")
-		if err != nil {
-			return nil, err
-		}
-		log.Debugf("Retrieving PyPI package metadata from %s\n", url)
-
-		response, err := client.Get(url)
-		if err != nil {
-			log.Debugf("Error while retrieving package %s\n", err)
-			lastErr = err
-			continue
-		}
-		defer response.Body.Close()
-
-		if response.StatusCode != 200 {
-			lastErr = fmt.Errorf("Received status code: %d from PyPI", response.StatusCode)
-			continue
-		}
-
-		decoder := json.NewDecoder(response.Body)
-		if err := decoder.Decode(&data); err != nil {
-			lastErr = err
-			continue
-		}
-
-		if message, ok := data["message"].(string); ok {
-			lastErr = fmt.Errorf("Error retrieving package: %s", message)
-			continue
-		}
-
-		// If everything is good break from the loop
-		break
-
+	decoder := json.NewDecoder(response.Body)
+	if err := decoder.Decode(&data); err != nil {
+		return nil, err
 	}
-	if len(data) == 0 && lastErr != nil {
-		return nil, lastErr
-	} else {
-		return data, nil
+
+	if message, ok := data["message"].(string); ok {
+		return nil, fmt.Errorf("Error retrieving package: %s", message)
 	}
+
+	return data, nil
 }
 
 func (s *PypiPackageManager) downloadCompressed(url, archivePath, targetPath string) error {

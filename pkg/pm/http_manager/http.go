@@ -8,13 +8,13 @@ import (
 	"sync"
 )
 
-type httpClient struct {
+type PypiHttpClient struct {
 	BaseUrl string
 	Client  *http.Client
 }
 
 // Join appends paths to the base URL and returns the resulting URL.
-func (c *httpClient) Join(params ...string) string {
+func (c *PypiHttpClient) Join(params ...string) string {
 	u, _ := url.Parse(c.BaseUrl)
 
 	// Append the provided path segments to the URL
@@ -25,29 +25,29 @@ func (c *httpClient) Join(params ...string) string {
 	return u.String()
 }
 
-func (c *httpClient) Get(url string) (resp *http.Response, err error) {
+func (c *PypiHttpClient) Get(url string) (resp *http.Response, err error) {
 	return c.Client.Get(url)
 }
 
 // HTTPClientManager manages HTTP clients for different hostnames.
 type HTTPClientManager struct {
-	clients map[string]*httpClient
+	clients map[string]*PypiHttpClient
 	mu      sync.Mutex
 }
 
 // NewHTTPClientManager creates a new HTTPClientManager.
 func NewHTTPClientManager() *HTTPClientManager {
 	return &HTTPClientManager{
-		clients: make(map[string]*httpClient),
+		clients: make(map[string]*PypiHttpClient),
 	}
 }
 
 // GetAllBaseURLs returns a slice of all base URLs without credentials.
-func (m *HTTPClientManager) GetAllBaseURLs() []*httpClient {
+func (m *HTTPClientManager) GetAllBaseURLs() []*PypiHttpClient {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	var baseURLs []*httpClient
+	var baseURLs []*PypiHttpClient
 
 	for _, client := range m.clients {
 		baseURLs = append(baseURLs, client)
@@ -86,8 +86,8 @@ func (m *HTTPClientManager) AddURL(rawURL string) error {
 		}
 	}
 
-	// Create a new httpClient and associate it with the base URL without credentials
-	m.clients[hostname] = &httpClient{
+	// Create a new PypiHttpClient and associate it with the base URL without credentials
+	m.clients[hostname] = &PypiHttpClient{
 		BaseUrl: baseURLWithoutCreds,
 		Client:  client,
 	}
@@ -96,7 +96,7 @@ func (m *HTTPClientManager) AddURL(rawURL string) error {
 }
 
 // GetClient returns the HTTP client associated with a given hostname from a URL.
-func (m *HTTPClientManager) GetClient(rawURL string) (*httpClient, error) {
+func (m *HTTPClientManager) GetClient(rawURL string) (*PypiHttpClient, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, err
@@ -108,12 +108,12 @@ func (m *HTTPClientManager) GetClient(rawURL string) (*httpClient, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	httpClient, ok := m.clients[hostname]
+	PypiHttpClient, ok := m.clients[hostname]
 	if !ok {
 		return nil, fmt.Errorf("HTTP client for hostname %s not found", hostname)
 	}
 
-	return httpClient, nil
+	return PypiHttpClient, nil
 }
 
 func (m *HTTPClientManager) Get(url string) (resp *http.Response, err error) {
