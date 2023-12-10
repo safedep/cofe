@@ -87,6 +87,10 @@ func (p *Package) GetScorecardScore() float32 {
 	return p.scorecardScore
 }
 
+func (p *Package) GetReverseScorecardScore() float32 {
+	return 10.0 - p.GetScorecardScore()
+}
+
 func (p *Package) AddImportedModules(modules []string) {
 	if p.importedModules == nil {
 		p.importedModules = make(map[string]bool)

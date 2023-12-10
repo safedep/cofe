@@ -36,14 +36,28 @@ var score2Color = map[int]string{
 	0:  "#BBDEFB", //blue
 	1:  "#BBDEFB", //blue
 	2:  "#BBDEFB", //blue
-	3:  "#D500F9", // Purple
-	4:  "#D500F9", // Purple
-	5:  "#D500F9", // Purple
+	3:  "#ffee58", // Purple
+	4:  "#ffee58", // Purple
+	5:  "#ffee58", // Purple
 	6:  "#E64A19", // Orange
 	7:  "#E64A19", // Orange
 	8:  "#E64A19", // Orange
 	9:  "#D32F2F", // Orange
 	10: "#D32F2F", // Red
+}
+
+var scorecard2Color = map[int]string{
+	0:  "#c6ff00", //blue
+	1:  "#dce775", //blue
+	2:  "#dce775", //blue
+	3:  "#7e57c2", // Dark Purple
+	4:  "#7e57c2", // Dark Purple
+	5:  "#7e57c2", // Dark Purple
+	6:  "#d500f9", // purple
+	7:  "#d500f9", // purple
+	8:  "#d500f9", // purple
+	9:  "#e91e63", // pink
+	10: "#e91e63", // pink Shade
 
 }
 
@@ -153,7 +167,7 @@ func (g *graphResult) depth2Color(depth int) string {
 	return c
 }
 
-func (g *graphResult) score2Color(score int) string {
+func (g *graphResult) vulnScore2Color(score int) string {
 	c, ok := score2Color[score]
 	if !ok {
 		return "#b2bec3" //grey color
@@ -162,11 +176,56 @@ func (g *graphResult) score2Color(score int) string {
 	return c
 }
 
+func (g *graphResult) scorecardScore2Color(score float32) string {
+	c, ok := scorecard2Color[int(score)]
+	if !ok {
+		return "#b2bec3" //grey color
+	}
+
+	return c
+}
+
+func (g *graphResult) node2VulnColor(n iDepNode) string {
+	pkgNode, _ := n.(*pkgGraphNode)
+
+	if n.Key() == g.rootNode.Key() {
+		return "#AEEA00"
+	}
+
+	if pkgNode.pkg.GetMaxVulnScore() >= 3 {
+		return g.vulnScore2Color(pkgNode.pkg.GetMaxVulnScore())
+	} else {
+		return g.depth2Color(pkgNode.GetDepth())
+	}
+}
+
+func (g *graphResult) node2ScorecardColor(n iDepNode) string {
+	pkgNode, _ := n.(*pkgGraphNode)
+
+	if n.Key() == g.rootNode.Key() {
+		return "#AEEA00"
+	}
+
+	if pkgNode.pkg.GetReverseScorecardScore() >= 3 {
+		s := pkgNode.pkg.GetReverseScorecardScore()
+		return g.scorecardScore2Color(s)
+	} else {
+		return g.depth2Color(pkgNode.GetDepth())
+	}
+}
+
 func (g *graphResult) node2Color(n iDepNode) string {
 	pkgNode, _ := n.(*pkgGraphNode)
 
+	if n.Key() == g.rootNode.Key() {
+		return "#AEEA00"
+	}
+
 	if pkgNode.pkg.GetMaxVulnScore() > 7 {
-		return g.score2Color(pkgNode.pkg.GetMaxVulnScore())
+		return g.vulnScore2Color(pkgNode.pkg.GetMaxVulnScore())
+	} else if pkgNode.pkg.GetReverseScorecardScore() > 7 {
+		s := pkgNode.pkg.GetReverseScorecardScore()
+		return g.scorecardScore2Color(s)
 	} else {
 		return g.depth2Color(pkgNode.GetDepth())
 	}
@@ -229,7 +288,7 @@ func (g *graphResult) exportEdges2CSV(gg iDepNodeGraph, outpath string) error {
 	defer writer.Flush()
 
 	// Write the header row
-	header := []string{"source", "target", "color", "time"}
+	header := []string{"source", "target", "color", "vuln_score", "time"}
 	if err := writer.Write(header); err != nil {
 		return err
 	}
@@ -243,8 +302,8 @@ func (g *graphResult) exportEdges2CSV(gg iDepNodeGraph, outpath string) error {
 			edge.Source,
 			edge.Target,
 			g.depth2Color(sourceNode.depth),
-			g.depth2timestamp(sourceNode.depth),
 			strconv.Itoa(sourceNode.pkg.GetMaxVulnScore()),
+			g.depth2timestamp(sourceNode.depth),
 		}
 		if err := writer.Write(recordRow); err != nil {
 			return err
@@ -298,7 +357,7 @@ func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error
 	defer writer.Flush()
 
 	// Write the header row
-	header := []string{"id", "node_color", "node_value", "type", "vuln_score", "hygiene_score"}
+	header := []string{"id", "node_color", "vuln_color", "hygiene_color", "node_value", "type", "vuln_score", "hygiene_score"}
 	if err := writer.Write(header); err != nil {
 		return err
 	}
@@ -314,10 +373,12 @@ func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error
 		recordRow := []string{
 			v.Key(),
 			g.node2Color(pkgNode),
+			g.node2VulnColor(pkgNode),
+			g.node2ScorecardColor(pkgNode),
 			strconv.Itoa(v.GetDepth()),
 			strconv.Itoa(v.GetDepth()),
 			strconv.Itoa(pkgNode.pkg.GetMaxVulnScore()),
-			strconv.Itoa(int(10.0 - pkgNode.pkg.GetScorecardScore())),
+			strconv.Itoa(int(pkgNode.pkg.GetReverseScorecardScore())),
 		}
 		if err := writer.Write(recordRow); err != nil {
 			logger.Warnf("Error while metadata writig to CSV file %s", err)
