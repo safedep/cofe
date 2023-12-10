@@ -45,6 +45,8 @@ type Package struct {
 	importedModules map[string]bool
 	vulns           []PkgVuln
 	maxVulnScore    int
+	scorecardScore  float32
+	scorecardChecks []PkgScorecardCheck
 }
 
 type PkgVuln struct {
@@ -54,6 +56,12 @@ type PkgVuln struct {
 	Title           string                     `json:"title"`
 	BaseSeverity    PkgVulnSeverity            `json:"severity"`
 	OtherSeverities map[string]PkgVulnSeverity `json:"severities"`
+}
+
+type PkgScorecardCheck struct {
+	Name   string  `json:"name"`
+	Score  float64 `json:"score"`
+	Reason string  `json:"reason"`
 }
 
 type PkgVulnSeverity struct {
@@ -69,6 +77,14 @@ func (p *Package) GetMaxVulnScore() int {
 
 func (p *Package) GetVulns() []PkgVuln {
 	return p.vulns
+}
+
+func (p *Package) GetScorecardChecks() []PkgScorecardCheck {
+	return p.scorecardChecks
+}
+
+func (p *Package) GetScorecardScore() float32 {
+	return p.scorecardScore
 }
 
 func (p *Package) AddImportedModules(modules []string) {
@@ -103,6 +119,25 @@ func (p *Package) AddVulnerabilities(vulns *[]insightapi.PackageVulnerability) {
 
 		} else {
 			logger.Debugf("Found vuln with empty title %s", *vuln.Summary)
+		}
+	}
+}
+
+func (p *Package) AddScorecard(scorecard *insightapi.Scorecard) {
+	if scorecard == nil {
+		return
+	}
+
+	if scorecard.Content != nil {
+		if scorecard.Content.Score != nil {
+			p.scorecardScore = *scorecard.Content.Score
+		}
+	}
+
+	if scorecard.Content.Checks != nil {
+		for _, c := range *scorecard.Content.Checks {
+			sc := PkgScorecardCheck{Name: string(*c.Name), Score: float64(*c.Score)}
+			p.scorecardChecks = append(p.scorecardChecks, sc)
 		}
 	}
 }

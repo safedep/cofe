@@ -298,7 +298,7 @@ func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error
 	defer writer.Flush()
 
 	// Write the header row
-	header := []string{"id", "node_color", "node_value", "type", "max_score"}
+	header := []string{"id", "node_color", "node_value", "type", "vuln_score", "hygiene_score"}
 	if err := writer.Write(header); err != nil {
 		return err
 	}
@@ -317,6 +317,7 @@ func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error
 			strconv.Itoa(v.GetDepth()),
 			strconv.Itoa(v.GetDepth()),
 			strconv.Itoa(pkgNode.pkg.GetMaxVulnScore()),
+			strconv.Itoa(int(10.0 - pkgNode.pkg.GetScorecardScore())),
 		}
 		if err := writer.Write(recordRow); err != nil {
 			logger.Warnf("Error while metadata writig to CSV file %s", err)
@@ -328,14 +329,14 @@ func (g *graphResult) exportMetadata2CSV(gg iDepNodeGraph, outpath string) error
 }
 
 func (g *graphResult) Print() {
-	fmt.Printf("%s\n", g.rootNode.Key())
+	logger.Debugf("%s\n", g.rootNode.Key())
 	_ = G.BFS(g.graph, g.rootNode.Key(), func(value string) bool {
 		node, err := g.graph.Vertex(value)
 		if err != nil {
 			return false
 		}
 		node.GetDepth()
-		fmt.Printf("%s %s\n", g.spaces(node.GetDepth()), node.Key())
+		logger.Debugf("%s %s\n", g.spaces(node.GetDepth()), node.Key())
 		return false
 	})
 }
@@ -432,7 +433,7 @@ func iDepNodeHashFunc(n iDepNode) string {
 // Get the unique key of the node, used for loopups
 func (d *pkgGraphNode) Key() string {
 	// return fmt.Sprintf("%s:%s:%s", d.pkg.PackageDetails.Name, d.pkg.PackageDetails.Version, d.pkg.PackageDetails.Ecosystem)
-	return fmt.Sprintf("%s", d.pkg.PackageDetails.Name)
+	return fmt.Sprintf("%s", strings.ToLower(d.pkg.PackageDetails.Name))
 
 }
 
