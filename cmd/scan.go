@@ -18,7 +18,7 @@ var export2Csv string
 
 func newScanCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "filter",
+		Use:   "scan",
 		Short: "Scan Project & Prioritize Vulnerable and Insecure Dependencies to Upgrade",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			initLogger()

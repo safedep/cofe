@@ -65,7 +65,7 @@ func (v *VetReport) relativePath(basePath, fullPath string) string {
 
 func (v *VetReport) Print() {
 	for _, pkg := range v.packages.GetPackages() {
-		logger.Warnf("Manifest %s Package %s %s\n", pkg.Manifest.Path,
+		logger.Infof("Manifest %s Package %s %s\n", pkg.Manifest.Path,
 			pkg.PackageDetails.Name, pkg.PackageDetails.Version)
 	}
 }
