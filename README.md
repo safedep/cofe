@@ -106,7 +106,11 @@ Currently, Cofe supports the following ecosystem:
 ## Roadmap
 
 Future updates and expansions planned for Safedep/Vet on Steroids:
-
 1. Add support for Java.
 2. Integrate with Neo4j.
 3. Expand to support NPM packages.
+
+### Scope of Cofe 
+![Cofe Diagrams](https://github.com/safedep/cofe/assets/74857/8204af99-04ad-426c-a86c-9d0716c4c1a9)
+
+
