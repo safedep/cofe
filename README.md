@@ -111,6 +111,8 @@ Future updates and expansions planned for Safedep/Vet on Steroids:
 3. Expand to support NPM packages.
 
 ### Scope of Cofe 
-![Cofe Diagrams](https://github.com/safedep/cofe/assets/74857/8204af99-04ad-426c-a86c-9d0716c4c1a9)
+<p align="left">
+    <img alt="Cofe Architecture" src="https://github.com/safedep/cofe/assets/74857/8204af99-04ad-426c-a86c-9d0716c4c1a9" width="450" />
+</p>
 
 
