@@ -10,7 +10,7 @@ It is [Safedep/Vet](https://github.com/safedep/vet) on Steroids, a powerful tool
 
 A typical application has 1k+ direct and transitive dependencies. Typically, OSV scanner tools report vulnerabilities prioritized by CVSS score. Cofe assists security engineers and developers in finding the path from the application to the vulnerable location and helps in prioritization. 
 
-| Original Dependencies              | Priorotized Dependencies               |
+| Original Graph              | Cofe Magic   |
 | ---------------------- | ---------------------- |
 | <p align="center"><img alt="A typical dependency graph" src="docs/static/img/original_dep_graph.png" width="400" /></p> | <p align="center"><img alt="A typical dependency graph" src="docs/static/img/dep_graph_reachability.png" width="400" /></p> |
 
@@ -67,10 +67,11 @@ The above command will generate a few sets of files
 * g.csv.orig.csv: Initial Graph without any optimization
 * g.csv.orig.metadata.csv: related metadata of the initial graph
 
+Use [Cosmosgraph app](https://cosmograph.app/run) to upload edge and metadata to visualize
+
 ##### Sample Graphs
-
-
-
+- [Langchain Original Graph](https://cosmograph.app/run/?data=https://raw.githubusercontent.com/safedep/cofe/main/samples/csvs/libs/langchan.csv.orig.csv&meta=https://raw.githubusercontent.com/safedep/cofe/main/samples/csvs/libs/langchan.csv.orig.csv.metadata.csv&gravity=0.25&repulsion=1&repulsionTheta=1.15&linkSpring=1&linkDistance=10&friction=0.85&renderLinks=true&nodeSizeScale=0.6&linkWidthScale=0.2&linkArrowsSizeScale=0.5&nodeSize=size-vuln_score&nodeColor=color-vuln_color&nodeLabel=id&linkWidth=width-avg-vuln_weight&linkColor=color-vuln_score)
+- [Langchain Graph after Reduction](https://cosmograph.app/run/?data=https://raw.githubusercontent.com/safedep/cofe/main/samples/csvs/libs/langchan.csv&meta=https://raw.githubusercontent.com/safedep/cofe/main/samples/csvs/libs/langchan.csv.metadata.csv&gravity=0.25&repulsion=1&repulsionTheta=1.15&linkSpring=1&linkDistance=10&friction=0.85&renderLinks=true&nodeSizeScale=0.6&linkWidthScale=0.2&linkArrowsSizeScale=0.5&nodeSize=size-vuln_score&nodeColor=color-vuln_color&nodeLabel=id&linkWidth=width-avg-vuln_weight&linkColor=color-vuln_score) 
 
 
 ## How Does It Work?
