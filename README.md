@@ -1,4 +1,4 @@
-<h1 align="left">
+<h1 align="ceter">
     <img alt="SafeDep Cofe" src="docs/static/img/cofe-logo.png" width="150" />
 </h1>
 
