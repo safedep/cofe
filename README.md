@@ -1,8 +1,8 @@
 
-# Safedep/Vet on Steroids
+# Welcome to Cofe
 
-## What is Safedep/Vet on Steroids?
-Safedep/Vet on Steroids is a powerful tool designed to prioritize library and dependency upgrades in your software projects. It uses various heuristics, such as exploitability, reachability, and distinction between internal and external libraries, to make informed decisions about what to upgrade first.
+## What is it?
+It is [Safedep/Vet](https://github.com/safedep/vet) on Steroids, a powerful tool designed to prioritize library and dependency upgrades in your software projects. It uses various heuristics, such as exploitability, reachability, and distinction between internal and external libraries, to make informed decisions about what to upgrade first.
 
 ## Quick Start
 
@@ -11,25 +11,25 @@ Safedep/Vet on Steroids is a powerful tool designed to prioritize library and de
 To install, simply run the following command:
 
 ```bash
-go install
+go install github.com/safedep/cofe@main
 ```
 
-### Run Safedep/Vet on Steroids
+### Run It
 
 To get started with Safedep/Vet on Steroids, run:
 
 ```bash
-# Command to run the tool
+cofe scan -D <Changeme>/<yourproject>/
 ```
 
 ## Advanced Usage
 
 ### Scan Your Internal Repository
 
-Safedep/Vet on Steroids allows you to scan your internal repositories with different configurations. Here are some examples:
+Cofe allows you to scan your internal repositories with packages in your private artifact repositories. Here are some examples to scan a python project.
 
 ```bash
-go run main.go scan -D /yourproject/ --graphviz gz.dot --read-std-conf --debug -l-
+cofe scan -D <Changeme>/<yourproject>/ --read-std-conf
 ```
 
 ### Visualization
@@ -37,22 +37,34 @@ go run main.go scan -D /yourproject/ --graphviz gz.dot --read-std-conf --debug -
 #### Via Graphviz Tool
 
 ```bash
-go run main.go scan -D /yourproject/  --graphviz 1.dot --read-std-conf --debug -l-
+cofe scan -D <Changeme>/<yourproject>/ --graphviz g.dot --read-std-conf
 ```
-
-#### Via Chosmosgraph App
+##### Open the dot file using xdot utility on ubuntu:
 
 ```bash
-go run main.go scan -D /yourproject/  --csv pydemo.csv --debug -l pydemo.log
+xdot g.dot
 ```
+
+
+#### Via Chosmosgraph App (Online visualization tool)
+
+```bash
+cofe scan -D <Changeme>/<yourproject>/ --csv g.csv --read-std-conf
+```
+The above command will generate a few sets of files 
+* g.csv - containing edges of the dependency graph after the graph is reduced via various techniques such as reachability analysis
+* g.csv.metadata.csv - containing metadata related to nodes, such as score and color useful for visualization
+* g.csv.orig.csv: Initial Graph without any optimization
+* g.csv.orig.metadata.csv: related metadata of the initial graph
+
 
 ## How Does It Work?
 
-(Describe the inner workings of your tool, its architecture, how it analyzes and prioritizes dependencies, etc.)
+Upcoming. Stay Tuned...
 
 ## Supported Ecosystems
 
-Currently, Safedep/Vet on Steroids supports the following ecosystem:
+Currently, Cofe supports the following ecosystem:
 * Pypi / Python
 
 ## Roadmap
@@ -62,7 +74,3 @@ Future updates and expansions planned for Safedep/Vet on Steroids:
 1. Add support for Java.
 2. Integrate with Neo4j.
 3. Expand to support NPM packages.
-
----
-
-Feel free to modify and expand upon this template to better suit the specifics of your project and its documentation needs!
