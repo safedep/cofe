@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -20,12 +17,9 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "depw",
-	Short: "Dependency Graph Generator and Indexer into a graph database",
-	Long:  `Dependency Graph Generator and Indexer into a graph database`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Use:   "cofe",
+	Short: "Safedep/Vet on Steroids, prioritize dependencies to upgrade using reachability path",
+	Long:  `Safedep/Vet on Steroids, prioritize dependencies to upgrade using reachability path`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -38,14 +32,6 @@ func Execute() {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.codex.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose logs")
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Show debug logs")
@@ -60,7 +46,6 @@ func initLogger() {
 // Redirect to file or discard log if empty
 func redirectLogToFile(path string) {
 	// logger.Debugf("Redirecting logger output to: %s", path)
-
 	if !utils.IsEmptyString(path) {
 		if path == "-" {
 			logger.MigrateTo(os.Stdout)

@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -21,8 +18,8 @@ var export2Csv string
 
 func newScanCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "scan",
-		Short: "Scan and analyse package manifests",
+		Use:   "filter",
+		Short: "Scan Project & Prioritize Vulnerable and Insecure Dependencies to Upgrade",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			initLogger()
 			iconf := pypi.IndexUrlsConf{ReadStdPipConf: readStdPipConf}
@@ -106,7 +103,7 @@ func newDownloadPypiPkgCommand() *cobra.Command {
 			if err != nil {
 				panic(err)
 			}
-			// defer os.RemoveAll(baseDir)
+			defer os.RemoveAll(baseDir)
 			fmt.Printf("Extracted Package to %s", baseDir)
 			_, pkgDetails, err := pypi.ParsePythonWheelDist(baseDir)
 			if err != nil {
