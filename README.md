@@ -16,7 +16,7 @@ A typical application has 1k+ direct and transitive dependencies. Typically, OSV
 
 ## Quick Start
 
-### Install Safedep/Vet on Steroids
+### Install Cofe
 
 To install, simply run the following command:
 
@@ -31,6 +31,14 @@ To get started with Safedep/Vet on Steroids, run:
 ```bash
 cofe scan -D <Changeme>/<yourproject>/
 ```
+
+### Sample Output
+![cofe-output-20dec2023](https://github.com/safedep/cofe/assets/74857/9bcd8d1b-2bd6-4e74-a093-ccb76a8d58f5)
+
+
+### Demo 
+![cofe-demo](https://github.com/safedep/cofe/assets/74857/8453858c-33b5-42fa-a7ed-c48671148eb5)
+
 
 ## Advanced Usage
 
