@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	builder "github.com/safedep/deps_weaver/pkg/graph/deps"
-	"github.com/safedep/deps_weaver/pkg/pm/pypi"
-	"github.com/safedep/deps_weaver/pkg/vet"
+	builder "github.com/safedep/cofe/pkg/graph/deps"
+	"github.com/safedep/cofe/pkg/pm/pypi"
+	"github.com/safedep/cofe/pkg/vet"
 	"github.com/safedep/dry/log"
 	"github.com/spf13/cobra"
 )

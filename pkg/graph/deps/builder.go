@@ -8,8 +8,8 @@ import (
 	G "github.com/dominikbraun/graph"
 
 	"github.com/google/osv-scanner/pkg/lockfile"
-	"github.com/safedep/deps_weaver/pkg/core/models"
-	"github.com/safedep/deps_weaver/pkg/vet"
+	"github.com/safedep/cofe/pkg/core/models"
+	"github.com/safedep/cofe/pkg/vet"
 	"github.com/safedep/vet/pkg/common/logger"
 )
 

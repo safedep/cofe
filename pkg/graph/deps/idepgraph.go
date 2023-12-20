@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	G "github.com/dominikbraun/graph"
-	"github.com/safedep/deps_weaver/pkg/core/models"
+	"github.com/safedep/cofe/pkg/core/models"
 )
 
 // Sortable structure to store node, weight and path from root

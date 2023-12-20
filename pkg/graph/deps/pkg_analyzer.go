@@ -5,8 +5,8 @@ import (
 
 	"github.com/safedep/codex/pkg/parser/py/imports"
 	"github.com/safedep/codex/pkg/utils/py/dir"
-	"github.com/safedep/deps_weaver/pkg/core/models"
-	"github.com/safedep/deps_weaver/pkg/pm/pypi"
+	"github.com/safedep/cofe/pkg/core/models"
+	"github.com/safedep/cofe/pkg/pm/pypi"
 	"github.com/safedep/vet/pkg/common/logger"
 )
 

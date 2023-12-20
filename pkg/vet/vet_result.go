@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/safedep/deps_weaver/pkg/core/models"
+	"github.com/safedep/cofe/pkg/core/models"
 	"github.com/safedep/vet/pkg/common/logger"
 	vet_models "github.com/safedep/vet/pkg/models"
 )

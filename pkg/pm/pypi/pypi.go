@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	hm "github.com/safedep/deps_weaver/pkg/pm/http_manager"
+	hm "github.com/safedep/cofe/pkg/pm/http_manager"
 	"github.com/safedep/vet/pkg/common/logger"
 )
 

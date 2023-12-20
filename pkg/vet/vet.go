@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/go-github/v54/github"
-	"github.com/safedep/deps_weaver/pkg/vet/auth"
+	"github.com/safedep/cofe/pkg/vet/auth"
 	"github.com/safedep/dry/utils"
 	"github.com/safedep/vet/pkg/analyzer"
 	"github.com/safedep/vet/pkg/common/logger"

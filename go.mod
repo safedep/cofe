@@ -1,4 +1,4 @@
-module github.com/safedep/deps_weaver
+module github.com/safedep/cofe
 
 go 1.21.2
 
