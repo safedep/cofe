@@ -1,4 +1,4 @@
-<h1 align="ceter">
+<h1 align="center">
     <img alt="SafeDep Cofe" src="docs/static/img/cofe-logo.png" width="150" />
 </h1>
 
@@ -8,14 +8,11 @@ Prioritize OSS vulnerabilities beyond CVSS score, using dependency graph and vul
 ## What is it?
 It is [Safedep/Vet](https://github.com/safedep/vet) on Steroids, a powerful tool designed to prioritize library and dependency upgrades in your software projects. It uses various heuristics, such as exploitability, reachability, and distinction between internal and external libraries, to make informed decisions about what to upgrade first.
 
-<p align="center">
-    <img alt="A typical dependency graph" src="docs/static/img/complex_dep_graph.png" width="250" />
-</p>
-  A typical application has 1k+ direct and transitive dependencies. Typically, OSV scanner tools report vulnerabilities prioritized by CVSS score. Cofe assists security engineers and developers in finding the path from the application to the vulnerable location and helps in prioritization. 
+A typical application has 1k+ direct and transitive dependencies. Typically, OSV scanner tools report vulnerabilities prioritized by CVSS score. Cofe assists security engineers and developers in finding the path from the application to the vulnerable location and helps in prioritization. 
 
-<p align="center">
-    <img alt="A typical dependency graph" src="docs/static/img/dep_graph_reachability.png" width="250" />
-</p>
+| Original Dependencies              | Priorotized Dependencies               |
+| ---------------------- | ---------------------- |
+| <p align="center"><img alt="A typical dependency graph" src="docs/static/img/original_dep_graph.png" width="400" /></p> | <p align="center"><img alt="A typical dependency graph" src="docs/static/img/dep_graph_reachability.png" width="400" /></p> |
 
 ## Quick Start
 
@@ -69,6 +66,11 @@ The above command will generate a few sets of files
 * g.csv.metadata.csv - containing metadata related to nodes, such as score and color useful for visualization
 * g.csv.orig.csv: Initial Graph without any optimization
 * g.csv.orig.metadata.csv: related metadata of the initial graph
+
+##### Sample Graphs
+
+
+
 
 
 ## How Does It Work?
