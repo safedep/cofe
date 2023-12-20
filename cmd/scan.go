@@ -50,9 +50,6 @@ func newScanCommand() *cobra.Command {
 				gres.Export2CSV(fmt.Sprintf("%s.orig.csv", export2Csv), false)
 			}
 
-			gres.RemoveEdgesBasedOnImportedModules()
-			gres.Print()
-
 			if export2Graphviz != "" {
 				gres.Export2Graphviz(export2Graphviz, true)
 			}
@@ -60,6 +57,9 @@ func newScanCommand() *cobra.Command {
 			if export2Csv != "" {
 				gres.Export2CSV(export2Csv, true)
 			}
+
+			gres.PrintVulns()
+			gres.PrintLowHygieneNodes()
 
 			return nil
 		},

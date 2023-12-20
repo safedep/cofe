@@ -39,14 +39,15 @@ type Manifest struct {
 // Represents a package manifest that contains a list
 // of packages. Example: pom.xml, requirements.txt
 type Package struct {
-	PackageDetails  PackageDetails
-	Manifest        *Manifest // Link to Manifest
-	exportedModules map[string]bool
-	importedModules map[string]bool
-	vulns           []PkgVuln
-	maxVulnScore    int
-	scorecardScore  float32
-	scorecardChecks []PkgScorecardCheck
+	PackageDetails     PackageDetails
+	Manifest           *Manifest // Link to Manifest
+	exportedModules    map[string]bool
+	importedModules    map[string]bool
+	vulns              []PkgVuln
+	maxVulnScore       int
+	scorecardAvailable bool
+	scorecardScore     float32
+	scorecardChecks    []PkgScorecardCheck
 }
 
 type PkgVuln struct {
@@ -71,6 +72,10 @@ type PkgVulnSeverity struct {
 	Vector string `json:"vector"`
 }
 
+func NewPackage(pd *PackageDetails, m *Manifest) *Package {
+	return &Package{PackageDetails: *pd, Manifest: m}
+}
+
 func (p *Package) GetMaxVulnScore() int {
 	return p.maxVulnScore
 }
@@ -87,8 +92,13 @@ func (p *Package) GetScorecardScore() float32 {
 	return p.scorecardScore
 }
 
+// return 10-scorecard score
 func (p *Package) GetReverseScorecardScore() float32 {
-	return 10.0 - p.GetScorecardScore()
+	if p.scorecardAvailable {
+		return 10.0 - p.GetScorecardScore()
+	} else {
+		return -1
+	}
 }
 
 func (p *Package) AddImportedModules(modules []string) {
@@ -134,6 +144,7 @@ func (p *Package) AddScorecard(scorecard *insightapi.Scorecard) {
 
 	if scorecard.Content != nil {
 		if scorecard.Content.Score != nil {
+			p.scorecardAvailable = true
 			p.scorecardScore = *scorecard.Content.Score
 		}
 	}
