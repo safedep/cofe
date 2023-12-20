@@ -96,7 +96,10 @@ Use [Cosmosgraph app](https://cosmograph.app/run) to upload edge and metadata to
 
 ## How Does It Work?
 
-Upcoming. Stay Tuned...
+<p align="left">
+    <img alt="Cofe Architecture" src="https://github.com/safedep/cofe/assets/74857/8204af99-04ad-426c-a86c-9d0716c4c1a9" width="650" />
+</p>
+
 
 ## Supported Ecosystems
 
@@ -109,10 +112,5 @@ Future updates and expansions planned for Safedep/Vet on Steroids:
 1. Add support for Java.
 2. Integrate with Neo4j.
 3. Expand to support NPM packages.
-
-### Scope of Cofe 
-<p align="left">
-    <img alt="Cofe Architecture" src="https://github.com/safedep/cofe/assets/74857/8204af99-04ad-426c-a86c-9d0716c4c1a9" width="450" />
-</p>
 
 
