@@ -24,6 +24,15 @@ To install, simply run the following command:
 go install github.com/safedep/cofe@main
 ```
 
+### Install and Configure Vet
+Currently, **Cofe** supports [Safedep/Vet](https://github.com/safedep/vet) as the default dependency scanner. You need to install at least vet community edition to get the vet working.
+
+```bash
+go install github.com/safedep/vet@main
+vet auth configure --community
+```
+For other installation options, please refer to [Safedep/Vet](https://github.com/safedep/vet) 
+
 ### Run It
 
 To get started with Safedep/Vet on Steroids, run:
