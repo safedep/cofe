@@ -56,7 +56,7 @@ func newScanCommand() *cobra.Command {
 			}
 
 			gres.PrintVulns()
-			gres.PrintLowHygieneNodes()
+			// gres.PrintLowHygieneNodes()
 
 			return nil
 		},

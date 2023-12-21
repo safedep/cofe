@@ -133,12 +133,12 @@ func (v *VetScanner) internalStartScan() (*VetReport, error) {
 
 	reporters := []reporter.Reporter{}
 	// if v.input.ConsoleReport {
-	rp, err := reporter.NewConsoleReporter()
-	if err != nil {
-		return nil, err
-	}
+	// rp, err := reporter.NewConsoleReporter()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	reporters = append(reporters, rp)
+	// reporters = append(reporters, rp)
 	// }
 
 	// if v.input.SummaryReport {

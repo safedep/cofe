@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-
+cofe 
 # Test binary, built with `go test -c`
 *.test
 
@@ -17,5 +17,4 @@
 # vendor/
 
 /vet
-
 dist/

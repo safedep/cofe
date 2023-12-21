@@ -6,6 +6,7 @@ import (
 	"path"
 
 	G "github.com/dominikbraun/graph"
+	"github.com/schollz/progressbar/v3"
 
 	"github.com/google/osv-scanner/pkg/lockfile"
 	"github.com/safedep/cofe/pkg/core/models"
@@ -92,6 +93,7 @@ func (c *DepsCrawler) Crawl() (*graphResult, error) {
 	}
 	c.rootpkgGraphNode.pkg.AddExportedModules(expModules)
 
+	vetStatusBar := progressbar.Default(-1, "Running Vet")
 	// Scan the base Project to find dependencies
 	vetReport, err := c.vetScanner.StartScan()
 	if err != nil {
@@ -109,15 +111,18 @@ func (c *DepsCrawler) Crawl() (*graphResult, error) {
 			recCrawler.addNode2Queue(n)
 		}
 		graph.g.AddEdge(c.rootpkgGraphNode.Key(), n.Key(), G.EdgeData(NewPkgGraphEdgeData()))
+		vetStatusBar.Add(1)
 	}
+	vetStatusBar.Finish()
 
 	//Do the recursive crawling based on the seed nodes
 	recCrawler.crawl()
 
+	graphAnalysisBar := progressbar.Default(-1, "Analyzing Graph")
 	gres := newGraphResult(c.rootpkgGraphNode, graph)
 	gres.addEdgeWeightBasedOnVulnScore(graph)
-
 	gres.getIDepNodeGraph(true)
+	graphAnalysisBar.Finish()
 
 	return gres, nil
 }
@@ -132,7 +137,10 @@ func (r *recursiveCrawler) markVisited(n iDepNode) {
 }
 
 func (r *recursiveCrawler) addNode2Queue(n iDepNode) {
-	r.queue = append(r.queue, n)
+	isMaxDepth := n.GetDepth() > r.maxDepth
+	if !isMaxDepth {
+		r.queue = append(r.queue, n)
+	}
 }
 
 func (r *recursiveCrawler) nextVertexFromQueue() iDepNode {
@@ -149,8 +157,10 @@ func (r *recursiveCrawler) nextVertexFromQueue() iDepNode {
 }
 
 func (r *recursiveCrawler) crawl() error {
+	bar := progressbar.Default(int64(len(r.queue)), "Crawling Packages")
 	for {
 		size, _ := r.graph.g.Size()
+		bar.ChangeMax(len(r.queue))
 		logger.Debugf("Queue Length %d, Edges %d", len(r.queue), size)
 		vertex := r.nextVertexFromQueue()
 		if vertex == nil {
@@ -162,6 +172,9 @@ func (r *recursiveCrawler) crawl() error {
 		if err != nil {
 			logger.Debugf("\tError processing node %s..", vertex.Key())
 		}
+
+		bar.Add(1)
+
 		for _, n := range nodes {
 			err := r.graph.g.AddVertex(n)
 			if err != nil {
@@ -176,6 +189,7 @@ func (r *recursiveCrawler) crawl() error {
 
 		}
 	}
+	bar.Finish()
 	return nil
 }
 

@@ -12,6 +12,8 @@ import (
 	"github.com/dominikbraun/graph"
 	G "github.com/dominikbraun/graph"
 	"github.com/dominikbraun/graph/draw"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/safedep/vet/pkg/common/logger"
 )
 
@@ -187,7 +189,7 @@ func (g *graphResult) updateEdgeVulnWeight(gr *iDepNodeGraph, endNode iDepNode, 
 		if len(pathFromRoot) > 0 {
 			l := len(pathFromRoot) - 1
 			if vulnScore-l > 0 {
-				w := vulnScore - l // closer the vuln, higher the weight
+				w := vulnScore - l + 1 // closer the vuln, higher the weight
 				gr.addVulnNode(endNode, w, pathFromRoot)
 				// Update the edge weights from end node to root node
 				for i, s := range pathFromRoot {
@@ -220,7 +222,7 @@ func (g *graphResult) updateEdgeScorecardWeight(gr *iDepNodeGraph, endNode iDepN
 	hygieneScore := int(pkgNode.pkg.GetReverseScorecardScore())
 	if pkgNode.pkg.GetReverseScorecardScore() > 0 {
 		if len(pathFromRoot) > 0 {
-			l := len(pathFromRoot) - 1
+			l := len(pathFromRoot) - 1 + 1
 			if hygieneScore-l > 0 {
 				w := hygieneScore - l // closer the node, higher the weight
 				// Update lowHydiene Score Nodes
@@ -500,9 +502,65 @@ func (g *graphResult) Print() {
 	})
 }
 
+// getColorBasedOnScore returns the color based on the COFE priority score
+func (g *graphResult) getColorBasedOnScore(score int) text.Colors {
+	switch {
+	case score >= 9:
+		return text.Colors{text.BgRed, text.FgWhite}
+	case score >= 6 && score <= 8:
+		return text.Colors{text.BgHiRed, text.FgWhite}
+	case score >= 3 && score < 6:
+		return text.Colors{text.BgBlue, text.FgWhite}
+	default:
+		return text.Colors{text.BgBlack, text.FgHiWhite}
+	}
+}
+
+const (
+	COFE_SCORE_HEADER = "Cofe Score"
+	CVSS_SCORE_HEADER = "CVSS Score"
+	ECOSYSTEM_HEADER  = "Ecosystem"
+	NAME_HEADER       = "Name"
+	PATH_HEADER       = "Path"
+)
+
 func (g *graphResult) PrintVulns() {
 	vulnNodes := g.cachedReachableGraph.getVulnNodes()
 	sort.Sort(byNodeWeight(vulnNodes))
+
+	tbl := table.NewWriter()
+	tbl.SetStyle(table.StyleLight)
+	tbl.SetOutputMirror(os.Stdout)
+
+	cofePriorityTransformer := text.Transformer(func(val interface{}) string {
+		w, ok := val.(int)
+		if ok {
+			return g.getColorBasedOnScore(w).Sprint(fmt.Sprintf("%3d%-2s", val, ""))
+		} else {
+			return g.getColorBasedOnScore(-1).Sprint(val)
+		}
+	})
+
+	tbl.SetColumnConfigs([]table.ColumnConfig{
+		{
+			Name:        COFE_SCORE_HEADER,
+			Align:       text.AlignCenter,
+			AlignFooter: text.AlignCenter,
+			AlignHeader: text.AlignCenter,
+			Transformer: cofePriorityTransformer,
+			WidthMin:    4,
+		}, {
+			Name:        CVSS_SCORE_HEADER,
+			Align:       text.AlignCenter,
+			AlignFooter: text.AlignCenter,
+			AlignHeader: text.AlignCenter,
+			Transformer: cofePriorityTransformer,
+			WidthMin:    4,
+		},
+	})
+
+	tbl.AppendHeader(table.Row{ECOSYSTEM_HEADER, NAME_HEADER, CVSS_SCORE_HEADER,
+		COFE_SCORE_HEADER, PATH_HEADER})
 
 	cache := make(map[string]bool, 0)
 	if len(vulnNodes) > 0 {
@@ -513,24 +571,38 @@ func (g *graphResult) PrintVulns() {
 			pd := pkgNode.pkg.PackageDetails
 			vulnScore := pkgNode.pkg.GetMaxVulnScore()
 			path := v.pathFromSource
-			fmt.Printf("%s/%s [Vulnerable] Severity [%d] Priority [%d] Path: %s\n", pd.Name, pd.Version, vulnScore, v.w, path)
+			tbl.AppendRow(table.Row{
+				pd.Ecosystem,
+				fmt.Sprintf("%s@%s", pd.Name, pd.Version),
+				vulnScore,
+				v.w,
+				strings.Join(path, " > "),
+			})
 		}
 	}
 
 	origVulnNodes := g.graph.getVulnNodes()
 	sort.Sort(byNodeWeight(origVulnNodes))
 	if len(origVulnNodes) > 0 {
-		fmt.Println("\nFalse Positives Removed after reachability analysis: ")
 		for _, v := range origVulnNodes {
 			if _, ok := cache[v.n.Key()]; !ok {
 				pkgNode, _ := (v.n).(*pkgGraphNode)
 				pd := pkgNode.pkg.PackageDetails
 				vulnScore := pkgNode.pkg.GetMaxVulnScore()
 				path := v.pathFromSource
-				fmt.Printf("%s/%s [Vulnerable] Severity [%d] Priority [%d] Path: %s\n", pd.Name, pd.Version, vulnScore, v.w, path)
+				// Get color based on COFE Priority score
+				tbl.AppendRow(table.Row{
+					pd.Ecosystem,
+					fmt.Sprintf("%s@%s", pd.Name, pd.Version),
+					vulnScore,
+					"None",
+					fmt.Sprintf("None in Reduced Graph, Removed Path: %s", strings.Join(path, " > ")),
+				})
 			}
 		}
 	}
+
+	tbl.Render()
 }
 
 func (g *graphResult) PrintLowHygieneNodes() {
