@@ -522,6 +522,7 @@ const (
 	ECOSYSTEM_HEADER  = "Ecosystem"
 	NAME_HEADER       = "Name"
 	PATH_HEADER       = "Path"
+	VULN_COUNT_HEADER = "Vuln Count"
 )
 
 func (g *graphResult) PrintVulns() {
@@ -556,10 +557,17 @@ func (g *graphResult) PrintVulns() {
 			AlignHeader: text.AlignCenter,
 			Transformer: cofePriorityTransformer,
 			WidthMin:    4,
+		}, {
+			Name:        VULN_COUNT_HEADER,
+			Align:       text.AlignCenter,
+			AlignFooter: text.AlignCenter,
+			AlignHeader: text.AlignCenter,
+			WidthMin:    4,
 		},
 	})
 
-	tbl.AppendHeader(table.Row{ECOSYSTEM_HEADER, NAME_HEADER, CVSS_SCORE_HEADER,
+	tbl.AppendHeader(table.Row{ECOSYSTEM_HEADER, NAME_HEADER, VULN_COUNT_HEADER,
+		CVSS_SCORE_HEADER,
 		COFE_SCORE_HEADER, PATH_HEADER})
 
 	cache := make(map[string]bool, 0)
@@ -571,9 +579,11 @@ func (g *graphResult) PrintVulns() {
 			pd := pkgNode.pkg.PackageDetails
 			vulnScore := pkgNode.pkg.GetMaxVulnScore()
 			path := v.pathFromSource
+			vulnCount := pkgNode.pkg.GetVulnsCount()
 			tbl.AppendRow(table.Row{
 				pd.Ecosystem,
 				fmt.Sprintf("%s@%s", pd.Name, pd.Version),
+				vulnCount,
 				vulnScore,
 				v.w,
 				strings.Join(path, " > "),
@@ -590,10 +600,12 @@ func (g *graphResult) PrintVulns() {
 				pd := pkgNode.pkg.PackageDetails
 				vulnScore := pkgNode.pkg.GetMaxVulnScore()
 				path := v.pathFromSource
+				vulnCount := pkgNode.pkg.GetVulnsCount()
 				// Get color based on COFE Priority score
 				tbl.AppendRow(table.Row{
 					pd.Ecosystem,
 					fmt.Sprintf("%s@%s", pd.Name, pd.Version),
+					vulnCount,
 					vulnScore,
 					"None",
 					fmt.Sprintf("None in Reduced Graph, Removed Path: %s", strings.Join(path, " > ")),

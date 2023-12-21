@@ -84,6 +84,10 @@ func (p *Package) GetVulns() []PkgVuln {
 	return p.vulns
 }
 
+func (p *Package) GetVulnsCount() int {
+	return len(p.vulns)
+}
+
 func (p *Package) GetScorecardChecks() []PkgScorecardCheck {
 	return p.scorecardChecks
 }
