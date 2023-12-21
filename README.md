@@ -112,5 +112,6 @@ Future updates and expansions planned for Safedep/Vet on Steroids:
 1. Add support for Java.
 2. Integrate with Neo4j.
 3. Expand to support NPM packages.
+4. Support VEX output
 
 
