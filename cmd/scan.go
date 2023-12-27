@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	builder "github.com/safedep/cofe/pkg/graph/deps"
 	"github.com/safedep/cofe/pkg/pm/pypi"
@@ -22,6 +23,13 @@ func newScanCommand() *cobra.Command {
 		Short: "Scan Project & Prioritize Vulnerable and Insecure Dependencies to Upgrade",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			initLogger()
+
+			if fullpath, err := convertToAbsolutePath(vi.BaseDirectory); err != nil {
+				return err
+			} else {
+				vi.BaseDirectory = fullpath
+			}
+
 			iconf := pypi.IndexUrlsConf{ReadStdPipConf: readStdPipConf}
 			indexUrls, err := pypi.GetIndexURLs(iconf)
 			if err != nil {
@@ -138,4 +146,18 @@ func init() {
 	log.InitZapLogger("Zap")
 	rootCmd.AddCommand(newScanCommand())
 	rootCmd.AddCommand(newDownloadPypiPkgCommand())
+}
+
+// ConvertToAbsolutePath takes a directory path and converts it to an absolute path if it's relative
+func convertToAbsolutePath(dir string) (string, error) {
+	if filepath.IsAbs(dir) {
+		// It's already an absolute path
+		return dir, nil
+	}
+	// Convert to absolute path
+	absPath, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err // return the error
+	}
+	return absPath, nil
 }
